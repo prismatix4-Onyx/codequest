@@ -18,7 +18,10 @@ export class SubmissionsService {
   }
 
   private loadMissions() {
-    const missionsPath = path.resolve(__dirname, '../../../../content/python/last-protocol/missions.json');
+    const cwdPath = path.resolve(process.cwd(), 'content/python/last-protocol/missions.json');
+    const relativePath = path.resolve(__dirname, '../../../../content/python/last-protocol/missions.json');
+    const missionsPath = fs.existsSync(cwdPath) ? cwdPath : relativePath;
+
     if (fs.existsSync(missionsPath)) {
       try {
         const raw = fs.readFileSync(missionsPath, 'utf-8');

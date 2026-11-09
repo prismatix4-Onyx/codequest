@@ -12,9 +12,9 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
 
-  const port = process.env.API_PORT || 4000;
-  await app.listen(port);
-  console.log(`CODEQUEST API v2.0 running on: http://localhost:${port}/api/v1`);
+  const port = process.env.PORT || process.env.API_PORT || 10000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`CODEQUEST API v2.0 running on: http://0.0.0.0:${port}/api/v1`);
 }
 
 bootstrap();

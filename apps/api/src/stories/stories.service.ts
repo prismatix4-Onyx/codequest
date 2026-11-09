@@ -14,7 +14,10 @@ export class StoriesService {
 
   private loadCampaigns() {
     // 1. The Last Protocol
-    const campaignPath = path.resolve(__dirname, '../../../../content/python/last-protocol/campaign.json');
+    const cwdPath = path.resolve(process.cwd(), 'content/python/last-protocol/campaign.json');
+    const relativePath = path.resolve(__dirname, '../../../../content/python/last-protocol/campaign.json');
+    const campaignPath = fs.existsSync(cwdPath) ? cwdPath : relativePath;
+
     if (fs.existsSync(campaignPath)) {
       try {
         const raw = fs.readFileSync(campaignPath, 'utf-8');
