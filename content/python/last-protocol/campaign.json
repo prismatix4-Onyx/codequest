@@ -1,0 +1,292 @@
+{
+  "id": "campaign-last-protocol",
+  "slug": "last-protocol",
+  "title": "The Last Protocol",
+  "tagline": "Reboot the forgotten orbital station before atmospheric containment collapses.",
+  "description": "Deep in high Earth orbit, Orbital Station Aethelgard has gone silent. As an elite Systems Engineer, you wake up to find ARIA, the station's AI guardian, running on backup auxiliary cells. Together, you must harness Python to repair station subroutines, decode encrypted signals, and prevent planetary fallout.",
+  "language": "python",
+  "difficulty": "beginner",
+  "version": "2.0.0",
+  "defaultEnvironmentId": "env-aethelgard-command-bridge",
+  "totalMissions": 4,
+  "estimatedHours": 3.5,
+  "chapters": [
+    {
+      "id": "lp-ch-1",
+      "storyId": "campaign-last-protocol",
+      "order": 1,
+      "title": "Chapter 1: The Cold Awakening",
+      "description": "Restore primary diagnostics to Aethelgard's command nexus.",
+      "scenes": [
+        {
+          "id": "scene-lp-1-establishing",
+          "storyId": "campaign-last-protocol",
+          "chapterId": "lp-ch-1",
+          "type": "cinematic",
+          "title": "Orbit Over Earth: Aethelgard Drifting",
+          "description": "Establishing panoramic shot of the orbital station silent against the backdrop of Earth.",
+          "environmentId": "env-aethelgard-command-bridge",
+          "camera": {
+            "type": "establishing",
+            "position": [0, 4.5, 9.0],
+            "target": [0, 1.2, 0],
+            "fov": 45,
+            "durationSeconds": 4
+          },
+          "characters": [
+            {
+              "characterId": "aria",
+              "position": [0, 0, 0],
+              "rotation": [0, 0, 0],
+              "initialAnimation": "idle"
+            }
+          ],
+          "dialogue": [
+            {
+              "id": "dlg-lp-1-1",
+              "characterId": "aria",
+              "characterName": "ARIA",
+              "text": "System alert. Primary containment offline. Engineer, can you hear me? My neural relays are barely holding auxiliary power.",
+              "emotion": "surprised",
+              "audioId": "audio-aria-awakening-1",
+              "audioUrl": "/audio/aria-awakening-1.mp3",
+              "durationMs": 6800,
+              "pauseAfterMs": 400
+            }
+          ],
+          "nextSceneId": "scene-lp-2-briefing"
+        },
+        {
+          "id": "scene-lp-2-briefing",
+          "storyId": "campaign-last-protocol",
+          "chapterId": "lp-ch-1",
+          "type": "dialogue",
+          "title": "ARIA Diagnostic Handshake",
+          "description": "ARIA steps closer to calibrate the diagnostic link.",
+          "environmentId": "env-aethelgard-command-bridge",
+          "camera": {
+            "type": "dialogue",
+            "position": [0, 2.0, 3.8],
+            "target": [0, 1.4, 0],
+            "fov": 38,
+            "durationSeconds": 2
+          },
+          "characters": [
+            {
+              "characterId": "aria",
+              "position": [0, 0, 0],
+              "rotation": [0, 0, 0],
+              "initialAnimation": "talking"
+            }
+          ],
+          "dialogue": [
+            {
+              "id": "dlg-lp-2-1",
+              "characterId": "aria",
+              "characterName": "ARIA",
+              "text": "The command console was encrypted by an automated safety interlock during the blackout. To override it, we must issue our first Python command: print our station status to the terminal stream.",
+              "emotion": "talking",
+              "audioId": "audio-aria-briefing-2",
+              "audioUrl": "/audio/aria-briefing-2.mp3",
+              "durationMs": 7900,
+              "pauseAfterMs": 300
+            }
+          ],
+          "nextSceneId": "scene-lp-3-choice"
+        },
+        {
+          "id": "scene-lp-3-choice",
+          "storyId": "campaign-last-protocol",
+          "chapterId": "lp-ch-1",
+          "type": "decision",
+          "title": "Determine Priority Subsystem",
+          "description": "Choose which subsystem to route preliminary telemetry through.",
+          "environmentId": "env-aethelgard-command-bridge",
+          "camera": {
+            "type": "close_up",
+            "position": [-0.5, 1.8, 3.2],
+            "target": [0, 1.4, 0],
+            "fov": 36
+          },
+          "characters": [
+            {
+              "characterId": "aria",
+              "position": [0, 0, 0],
+              "rotation": [0, -0.2, 0],
+              "initialAnimation": "thinking"
+            }
+          ],
+          "choices": [
+            {
+              "id": "choice-route-power",
+              "text": "Route emergency telemetry directly to the Main Reactor Core.",
+              "nextSceneId": "scene-lp-4-think",
+              "variableChanges": { "subsystem": "reactor", "safety_margin": 15 },
+              "rewardXp": 25,
+              "feedbackText": "Direct reactor telemetry provides high fidelity at slight thermal overhead."
+            },
+            {
+              "id": "choice-route-comm",
+              "text": "Route diagnostic stream to the Atmospheric Scrubber Matrix.",
+              "nextSceneId": "scene-lp-4-think",
+              "variableChanges": { "subsystem": "atmosphere", "safety_margin": 25 },
+              "rewardXp": 25,
+              "feedbackText": "Atmospheric route provides stable pressure stabilization readings."
+            }
+          ]
+        },
+        {
+          "id": "scene-lp-4-think",
+          "storyId": "campaign-last-protocol",
+          "chapterId": "lp-ch-1",
+          "type": "think",
+          "title": "Think Before You Code: Console Streams",
+          "description": "Analyze the mechanics of Python standard output before opening the terminal.",
+          "environmentId": "env-aethelgard-command-bridge",
+          "camera": {
+            "type": "mission",
+            "position": [0.8, 1.9, 3.5],
+            "target": [0, 1.3, 0],
+            "fov": 40
+          },
+          "characters": [
+            {
+              "characterId": "aria",
+              "position": [0, 0, 0],
+              "rotation": [0, 0.3, 0],
+              "initialAnimation": "listening"
+            }
+          ],
+          "thinkPrompt": {
+            "id": "think-py-1",
+            "title": "Standard Output Stream Mechanics",
+            "question": "Which Python statement correctly outputs the exact string 'PROTOCOL_READY' to standard output without syntax errors?",
+            "conceptReminder": "Python strings must be enclosed in matching quotes (single or double) and passed as arguments to print().",
+            "options": [
+              {
+                "id": "opt-1",
+                "text": "print(PROTOCOL_READY)",
+                "isCorrect": false,
+                "explanation": "Without quotes, Python interprets PROTOCOL_READY as an unassigned variable and raises a NameError."
+              },
+              {
+                "id": "opt-2",
+                "text": "print('PROTOCOL_READY')",
+                "isCorrect": true,
+                "explanation": "Correct! Enclosing the text in single quotes defines a valid string literal passed to the print() function."
+              },
+              {
+                "id": "opt-3",
+                "text": "output 'PROTOCOL_READY'",
+                "isCorrect": false,
+                "explanation": "'output' is not a valid Python keyword; Python standard output is invoked via print()."
+              }
+            ]
+          },
+          "nextSceneId": "scene-lp-5-challenge"
+        },
+        {
+          "id": "scene-lp-5-challenge",
+          "storyId": "campaign-last-protocol",
+          "chapterId": "lp-ch-1",
+          "type": "challenge",
+          "title": "Mission: Reboot Protocol Nexus",
+          "description": "Open Monaco Code Studio and write Python code to broadcast station telemetry.",
+          "environmentId": "env-aethelgard-command-bridge",
+          "camera": {
+            "type": "mission",
+            "position": [0, 1.8, 4.0],
+            "target": [0, 1.3, 0],
+            "fov": 42
+          },
+          "characters": [
+            {
+              "characterId": "aria",
+              "position": [0, 0, 0],
+              "rotation": [0, 0, 0],
+              "initialAnimation": "thinking"
+            }
+          ],
+          "missionId": "mission-lp-01",
+          "nextSceneId": "scene-lp-6-success"
+        },
+        {
+          "id": "scene-lp-6-success",
+          "storyId": "campaign-last-protocol",
+          "chapterId": "lp-ch-1",
+          "type": "reward",
+          "title": "Station Core Restored",
+          "description": "The command bridge pulses with vibrant cyan light as the reactor turbines spool up.",
+          "environmentId": "env-aethelgard-command-bridge",
+          "camera": {
+            "type": "establishing",
+            "position": [0, 3.0, 6.5],
+            "target": [0, 1.2, 0],
+            "fov": 45,
+            "durationSeconds": 3
+          },
+          "characters": [
+            {
+              "characterId": "aria",
+              "position": [0, 0, 0],
+              "rotation": [0, 0, 0],
+              "initialAnimation": "mission_success"
+            }
+          ],
+          "dialogue": [
+            {
+              "id": "dlg-lp-6-1",
+              "characterId": "aria",
+              "characterName": "ARIA",
+              "text": "Command bridge online! Diagnostic stream verified. Reactor output stabilizing at 98.4%. Outstanding work, Engineer! The station lives.",
+              "emotion": "mission_success",
+              "audioId": "audio-aria-success-6",
+              "audioUrl": "/audio/aria-success-6.mp3",
+              "durationMs": 7200,
+              "pauseAfterMs": 300
+            }
+          ],
+          "rewardXp": 150,
+          "unlockedAchievementId": "ach-first-boot",
+          "nextSceneId": "scene-lp-7-ending"
+        },
+        {
+          "id": "scene-lp-7-ending",
+          "storyId": "campaign-last-protocol",
+          "chapterId": "lp-ch-1",
+          "type": "ending",
+          "title": "Chapter 1 Cleared: Horizon Beacon",
+          "description": "Aethelgard now broadcasts its beacon across the orbital sphere. Chapter 2 awaits.",
+          "environmentId": "env-aethelgard-command-bridge",
+          "camera": {
+            "type": "establishing",
+            "position": [0, 5.0, 10.0],
+            "target": [0, 1.5, 0],
+            "fov": 50
+          },
+          "characters": [
+            {
+              "characterId": "aria",
+              "position": [0, 0, 0],
+              "rotation": [0, 0, 0],
+              "initialAnimation": "happy"
+            }
+          ],
+          "dialogue": [
+            {
+              "id": "dlg-lp-7-1",
+              "characterId": "aria",
+              "characterName": "ARIA",
+              "text": "The primary relays are secure, but sensor logs indicate a rogue frequency coming from the Sub-orbital Array. Ready when you are for our next descent.",
+              "emotion": "happy",
+              "audioId": "audio-aria-ending-7",
+              "audioUrl": "/audio/aria-ending-7.mp3",
+              "durationMs": 7500
+            }
+          ],
+          "rewardXp": 200
+        }
+      ]
+    }
+  ]
+}

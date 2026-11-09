@@ -1,0 +1,67 @@
+[
+  {
+    "id": "mission-lp-01",
+    "storyId": "campaign-last-protocol",
+    "chapterId": "lp-ch-1",
+    "conceptId": "py-intro",
+    "title": "Reboot Protocol Nexus",
+    "storyContext": "Aethelgard's command bridge needs immediate initialization. The automated bootloader is waiting for three lines of formatted telemetry to engage life support and reactor turbines.",
+    "objective": "Write a Python script that outputs exactly three lines to the console:\nLine 1: STATION: AETHELGARD\nLine 2: REACTOR_LEVEL: 100\nLine 3: PROTOCOL_STATUS: ONLINE",
+    "starterCode": "# CODEQUEST MISSION 01: Reboot Protocol Nexus\n# Systems Engineer: You\n# AI Companion: ARIA\n\n# Broadcast the 3 diagnostic lines using print():\n# 1. STATION: AETHELGARD\n# 2. REACTOR_LEVEL: 100\n# 3. PROTOCOL_STATUS: ONLINE\n\n",
+    "solutionCode": "print(\"STATION: AETHELGARD\")\nprint(\"REACTOR_LEVEL: 100\")\nprint(\"PROTOCOL_STATUS: ONLINE\")\n",
+    "testCases": [
+      {
+        "id": "tc-lp-01-1",
+        "description": "Standard output includes station identifier",
+        "input": "",
+        "expectedOutput": "STATION: AETHELGARD",
+        "isHidden": false
+      },
+      {
+        "id": "tc-lp-01-2",
+        "description": "Standard output includes reactor capacity",
+        "input": "",
+        "expectedOutput": "REACTOR_LEVEL: 100",
+        "isHidden": false
+      },
+      {
+        "id": "tc-lp-01-3",
+        "description": "Exact multi-line telemetry sequence verified",
+        "input": "",
+        "expectedOutput": "STATION: AETHELGARD\nREACTOR_LEVEL: 100\nPROTOCOL_STATUS: ONLINE",
+        "isHidden": true
+      }
+    ],
+    "hints": [
+      {
+        "level": 1,
+        "title": "Concept Reminder",
+        "content": "Python uses the built-in print() function to write text or numbers to standard output.",
+        "isUnlocked": false
+      },
+      {
+        "level": 2,
+        "title": "Logical Direction",
+        "content": "Invoke print(...) three separate times in sequence. Each print invocation automatically writes a new line.",
+        "isUnlocked": false
+      },
+      {
+        "level": 3,
+        "title": "Partial Pseudocode",
+        "content": "print(\"STATION: AETHELGARD\")\nprint(\"REACTOR_LEVEL: 100\")\n# Now add the third call for PROTOCOL_STATUS: ONLINE",
+        "isUnlocked": false
+      },
+      {
+        "level": 4,
+        "title": "Guided Code Structure",
+        "content": "print(\"STATION: AETHELGARD\")\nprint(\"REACTOR_LEVEL: 100\")\nprint(\"PROTOCOL_STATUS: ONLINE\")",
+        "isUnlocked": false
+      }
+    ],
+    "environmentEffectOnPass": {
+      "action": "restore_power",
+      "durationMs": 3000,
+      "message": "Power Grid Synchronized. Bridge Lighting Restored."
+    }
+  }
+]

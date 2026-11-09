@@ -1,0 +1,21 @@
+name: Render Keep-Alive Ping
+
+on:
+  schedule:
+    # Runs every 10 minutes to prevent Render free-tier instance cold sleep
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render Backend API
+        run: |
+          RENDER_URL="${{ secrets.RENDER_API_URL }}"
+          if [ -z "$RENDER_URL" ]; then
+            echo "RENDER_API_URL secret not set. Skipping ping."
+          else
+            echo "Pinging $RENDER_URL/api/v1/curriculum to keep service active..."
+            curl -s -f "$RENDER_URL/api/v1/curriculum" > /dev/null && echo "Ping successful! Service kept awake." || echo "Ping failed or starting up."
+          fi

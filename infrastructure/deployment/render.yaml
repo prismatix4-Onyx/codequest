@@ -1,0 +1,49 @@
+services:
+  # 1. NestJS Core API Service
+  - type: web
+    name: codequest-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm install && npx prisma generate --schema=packages/database/prisma/schema.prisma && npx tsc -p apps/api/tsconfig.json
+    startCommand: node apps/api/dist/main.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: EXECUTION_WORKER_URL
+        value: http://codequest-worker:8002/execute
+      - key: VOICE_SERVICE_URL
+        value: http://codequest-voice:8001
+
+  # 2. Python Edge-TTS Voice Generation Service
+  - type: web
+    name: codequest-voice
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: pip install -r apps/voice-service/requirements.txt
+    startCommand: uvicorn main:app --app-dir apps/voice-service --host 0.0.0.0 --port 8001
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+
+  # 3. Python Isolated Execution Sandbox Worker
+  - type: web
+    name: codequest-worker
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: pip install -r apps/execution-worker/requirements.txt
+    startCommand: uvicorn main:app --app-dir apps/execution-worker --host 0.0.0.0 --port 8002
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7

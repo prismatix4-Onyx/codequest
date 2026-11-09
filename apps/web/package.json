@@ -1,0 +1,44 @@
+{
+  "name": "@codequest/web",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@codequest/audio-engine": "*",
+    "@codequest/game-engine": "*",
+    "@codequest/learning-engine": "*",
+    "@codequest/python-curriculum": "*",
+    "@codequest/shared-types": "*",
+    "@codequest/story-engine": "*",
+    "@codequest/story-schema": "*",
+    "@codequest/ui": "*",
+    "@monaco-editor/react": "^4.6.0",
+    "@react-three/drei": "^9.114.0",
+    "@react-three/fiber": "^8.17.8",
+    "framer-motion": "^11.5.4",
+    "lucide-react": "^0.439.0",
+    "next": "^14.2.11",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.168.0",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.168.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.45",
+    "tailwindcss": "^3.4.11",
+    "typescript": "^5.5.4"
+  },
+  "optionalDependencies": {
+    "@next/swc-win32-x64-msvc": "npm:null@*"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "codequest-monorepo",
+  "version": "2.0.0",
+  "private": true,
+  "description": "CODEQUEST — Cinematic 3D Story-Based Interactive Programming Learning Platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n \"WEB,API,VOICE,EXEC\" -c \"cyan,blue,magenta,green\" \"npm run dev:web\" \"npm run dev:api\" \"npm run dev:voice\" \"npm run dev:worker\"",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:api": "npm run start:dev --workspace=apps/api",
+    "dev:voice": "python -m uvicorn main:app --app-dir apps/voice-service --port 8001 --reload",
+    "dev:worker": "python -m uvicorn main:app --app-dir apps/execution-worker --port 8002 --reload",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npx tsx tests/validate-campaign.ts && python tests/test_execution_worker.py",
+    "db:push": "prisma db push --schema=packages/database/prisma/schema.prisma",
+    "db:generate": "prisma generate --schema=packages/database/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=packages/database/prisma/schema.prisma"
+  },
+  "overrides": {
+    "dompurify": "^3.2.4"
+  },
+  "prisma": {
+    "schema": "packages/database/prisma/schema.prisma"
+  },
+  "optionalDependencies": {
+    "@next/swc-win32-x64-msvc": "14.2.35"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.5.4"
+  }
+}

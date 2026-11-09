@@ -1,0 +1,305 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  PLAYER
+  CREATOR
+  REVIEWER
+  ADMINISTRATOR
+}
+
+model User {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  username     String          @unique
+  passwordHash String
+  role         UserRole        @default(PLAYER)
+  avatarUrl    String?
+  bio          String?
+  xp           Int             @default(0)
+  level        Int             @default(1)
+  preferences  UserPreference?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  submissions     Submission[]
+  storyProgresses UserStoryProgress[]
+  userDecisions   UserDecision[]
+  missionProgress UserMissionProgress[]
+  skillMasteries  SkillMastery[]
+  hintUsages      HintUsage[]
+  achievements    UserAchievement[]
+}
+
+model UserPreference {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme            String   @default("system") // "light" | "dark" | "system"
+  voiceVolume      Float    @default(0.8)
+  musicVolume      Float    @default(0.5)
+  sfxVolume        Float    @default(0.7)
+  subtitlesEnabled Boolean  @default(true)
+  subtitleSize     String   @default("medium")
+  qualityPreset    String   @default("auto") // "low" | "medium" | "high" | "auto"
+  reducedMotion    Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+}
+
+model ProgrammingLanguage {
+  id          String   @id @default(uuid())
+  slug        String   @unique // "python", "javascript", "java", "cpp"
+  name        String
+  description String
+  stories     Story[]
+  concepts    Concept[]
+}
+
+model Story {
+  id                   String              @id @default(uuid())
+  slug                 String              @unique
+  title                String
+  tagline              String
+  description          String
+  languageId           String
+  language             ProgrammingLanguage @relation(fields: [languageId], references: [id])
+  difficulty           String              @default("beginner")
+  defaultEnvironmentId String
+  heroImageUrl         String?
+  chapters             Chapter[]
+  versions             StoryVersion[]
+  storyProgresses      UserStoryProgress[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+}
+
+model StoryVersion {
+  id          String   @id @default(uuid())
+  storyId     String
+  story       Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  version     String   // "2.0.0"
+  contentJson String   // Full snapshot of validated campaign json
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Chapter {
+  id          String   @id @default(uuid())
+  storyId     String
+  story       Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  order       Int
+  title       String
+  description String
+  scenes      Scene[]
+}
+
+model Scene {
+  id            String    @id @default(uuid())
+  chapterId     String
+  chapter       Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  type          String    // "cinematic" | "dialogue" | "decision" | "think" | "challenge" | etc.
+  title         String
+  environmentId String
+  cameraJson    String    // JSON config for CameraShotConfig
+  dialogueJson  String?   // JSON array of dialogue lines
+  nextSceneId   String?
+  missionId     String?
+  mission       Mission?  @relation(fields: [missionId], references: [id])
+  rewardXp      Int       @default(0)
+  choices       Choice[]
+}
+
+model Choice {
+  id              String   @id @default(uuid())
+  sceneId         String
+  scene           Scene    @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  text            String
+  nextSceneId     String
+  conditionJson   String?  // JSON serialized condition
+  variableChanges String?  // JSON serialized variables to update
+  rewardXp        Int      @default(0)
+}
+
+model Character {
+  id           String                 @id @default(uuid())
+  slug         String                 @unique // "aria", "kael", "orion", "nyx", "echo"
+  name         String
+  personality  String
+  voiceProfile CharacterVoiceProfile?
+  modelUrl     String?
+}
+
+model CharacterVoiceProfile {
+  id             String    @id @default(uuid())
+  characterId    String    @unique
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  provider       String    @default("edge-tts")
+  voiceId        String
+  language       String    @default("en-US")
+  rate           String    @default("+0%")
+  pitch          String    @default("+0Hz")
+  volume         String    @default("+0%")
+  preferredStyle String?
+}
+
+model AudioAsset {
+  id           String   @id @default(uuid())
+  contentHash  String   @unique
+  characterId  String
+  text         String
+  audioUrl     String
+  durationMs   Int
+  subtitles    String   // JSON stringified SubtitleCue[]
+  createdAt    DateTime @default(now())
+}
+
+model Concept {
+  id             String              @id @default(uuid())
+  languageId     String
+  language       ProgrammingLanguage @relation(fields: [languageId], references: [id])
+  stage          Int
+  moduleOrder    Int
+  title          String
+  summary        String
+  objectives     String              // JSON string array
+  missions       Mission[]
+  skillMasteries SkillMastery[]
+}
+
+model Mission {
+  id              String                @id @default(uuid())
+  conceptId       String
+  concept         Concept               @relation(fields: [conceptId], references: [id])
+  title           String
+  storyContext    String
+  objective       String
+  starterCode     String
+  solutionCode    String?
+  rewardXp        Int                   @default(100)
+  scenes          Scene[]
+  testCases       TestCase[]
+  submissions     Submission[]
+  missionProgress UserMissionProgress[]
+}
+
+model TestCase {
+  id             String  @id @default(uuid())
+  missionId      String
+  mission        Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  description    String
+  input          String  @default("")
+  expectedOutput String
+  isHidden       Boolean @default(false)
+}
+
+model Submission {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missionId       String
+  mission         Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  code            String
+  language        String   @default("python")
+  status          String   // "passed" | "failed" | "syntax_error" | "runtime_error" | "timeout"
+  stdout          String?
+  stderr          String?
+  executionTimeMs Float
+  allPassed       Boolean
+  feedback        String?
+  createdAt       DateTime @default(now())
+}
+
+model UserStoryProgress {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storyId             String
+  story               Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  currentChapterId    String
+  currentSceneId      String
+  completedSceneIds   String   // JSON array
+  variablesJson       String   // JSON key-value store
+  inventoryJson       String   // JSON array
+  unlockedCheckpoints String   // JSON array
+  completedMissionIds String   // JSON array
+  updatedAt           DateTime @updatedAt
+
+  @@unique([userId, storyId])
+}
+
+model UserDecision {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sceneId     String
+  choiceId    String
+  createdAt   DateTime @default(now())
+}
+
+model UserMissionProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missionId   String
+  mission     Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  isCompleted Boolean  @default(false)
+  attempts    Int      @default(0)
+  bestCode    String?
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, missionId])
+}
+
+model SkillMastery {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conceptId          String
+  concept            Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  masteryPercentage  Int      @default(0)
+  challengesCompleted Int     @default(0)
+  totalAttempts      Int      @default(0)
+  hintsUsedCount     Int      @default(0)
+  needsReview        Boolean  @default(false)
+  lastPracticedAt    DateTime @default(now())
+
+  @@unique([userId, conceptId])
+}
+
+model Achievement {
+  id          String            @id @default(uuid())
+  slug        String            @unique
+  title       String
+  description String
+  icon        String
+  category    String
+  xpReward    Int               @default(50)
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+}
+
+model HintUsage {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missionId String
+  hintLevel Int
+  usedAt    DateTime @default(now())
+}
