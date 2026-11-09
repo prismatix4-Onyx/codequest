@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Lock,
@@ -14,11 +14,25 @@ import {
   EyeOff,
   Code2,
   CheckCircle2,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { GamifiedLoginCanvas } from './GamifiedLoginCanvas';
+import { soundFx } from '@/utils/soundEffects';
 
 interface AuthPortalProps {
   onSuccess: () => void;
+}
+
+// Resilient API URL Builder: handles whether NEXT_PUBLIC_API_URL includes /api/v1 or not, and strips trailing slashes
+function getApiEndpoint(path: string): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  const base = raw.replace(/\/+$/, '');
+  const hasApiV1 = base.endsWith('/api/v1');
+  const root = hasApiV1 ? base : `${base}/api/v1`;
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${root}${cleanPath}`;
 }
 
 export function AuthPortal({ onSuccess }: AuthPortalProps) {
@@ -29,6 +43,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSoundMuted, setIsSoundMuted] = useState(false);
 
   // Google Modal State
   const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
@@ -37,13 +52,23 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
 
   const setUser = useStore((s) => s.setUser);
 
+  useEffect(() => {
+    setIsSoundMuted(soundFx.getIsMuted());
+  }, []);
+
+  const handleToggleSound = () => {
+    const muted = soundFx.toggleMute();
+    setIsSoundMuted(muted);
+  };
+
   const handleGoogleSignIn = async (gEmail: string, gName: string) => {
     setIsLoading(true);
     setError(null);
+    soundFx.playClick();
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-      const res = await fetch(`${apiUrl}/auth/google`, {
+      const endpoint = getApiEndpoint('/auth/google');
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -62,6 +87,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
       localStorage.setItem('codequest_user', JSON.stringify(data.user));
       setUser(data.user);
       setIsGoogleModalOpen(false);
+      soundFx.playSuccess();
       onSuccess();
     } catch {
       // Local fallback for offline/isolated mode
@@ -79,6 +105,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
       localStorage.setItem('codequest_user', JSON.stringify(fallbackUser));
       setUser(fallbackUser);
       setIsGoogleModalOpen(false);
+      soundFx.playSuccess();
       onSuccess();
     } finally {
       setIsLoading(false);
@@ -89,9 +116,9 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    soundFx.playClick();
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-    const endpoint = tab === 'login' ? `${apiUrl}/auth/login` : `${apiUrl}/auth/register`;
+    const endpoint = getApiEndpoint(tab === 'login' ? '/auth/login' : '/auth/register');
     const payload = tab === 'login' ? { email, password } : { email, username, password };
 
     try {
@@ -109,9 +136,11 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
       localStorage.setItem('codequest_token', data.token);
       localStorage.setItem('codequest_user', JSON.stringify(data.user));
       setUser(data.user);
+      soundFx.playSuccess();
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Failed to authenticate. Please check your credentials.');
+      soundFx.playError();
+      setError(err.message || 'Failed to authenticate. Please check your credentials or try Guest mode.');
     } finally {
       setIsLoading(false);
     }
@@ -119,49 +148,93 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
 
   const handleGuestEntry = async () => {
     setIsLoading(true);
+    soundFx.playClick();
+
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-      const res = await fetch(`${apiUrl}/auth/guest`, { method: 'POST' });
-      const data = await res.json();
-      if (data?.user) {
-        localStorage.setItem('codequest_token', data.token);
-        localStorage.setItem('codequest_user', JSON.stringify(data.user));
-        setUser(data.user);
+      const endpoint = getApiEndpoint('/auth/guest');
+      // Abort after 3.5s if Render is sleeping so user isn't stuck
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.user) {
+          localStorage.setItem('codequest_token', data.token);
+          localStorage.setItem('codequest_user', JSON.stringify(data.user));
+          setUser(data.user);
+          soundFx.playSuccess();
+          setIsLoading(false);
+          onSuccess();
+          return;
+        }
       }
     } catch {
-      // Offline fallback
-      const guestUser = {
-        id: `guest-${Math.random().toString(36).substring(2, 8)}`,
-        email: 'explorer@codequest.dev',
-        username: 'Guest Explorer',
-        avatarUrl: undefined,
-        role: 'PLAYER' as const,
-        xp: 0,
-        level: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      localStorage.setItem('codequest_user', JSON.stringify(guestUser));
-      setUser(guestUser);
-    } finally {
-      setIsLoading(false);
-      onSuccess();
+      // Offline / network fallback
     }
+
+    // Instant guaranteed guest session
+    const guestUser = {
+      id: `guest-${Math.random().toString(36).substring(2, 8)}`,
+      email: 'explorer@codequest.dev',
+      username: 'Guest Explorer',
+      avatarUrl: undefined,
+      role: 'PLAYER' as const,
+      xp: 0,
+      level: 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem('codequest_user', JSON.stringify(guestUser));
+    setUser(guestUser);
+    soundFx.playSuccess();
+    setIsLoading(false);
+    onSuccess();
   };
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-start sm:justify-center p-4 sm:p-6 py-8 sm:py-12 bg-[#0B0F19] relative overflow-y-auto select-none">
-      {/* Subtle Natural Ambient Lighting */}
+      {/* 1. Interactive Gamified Background Canvas with Constellations & Python Tokens */}
+      <GamifiedLoginCanvas />
+
+      {/* 2. Top-Right Sound FX Toggle Pill */}
+      <div className="fixed top-4 right-4 z-20">
+        <button
+          onClick={handleToggleSound}
+          onMouseEnter={() => soundFx.playHover()}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-300 hover:text-white hover:border-slate-700 backdrop-blur-md transition-all shadow-md cursor-pointer"
+          title={isSoundMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
+        >
+          {isSoundMuted ? (
+            <>
+              <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+              <span className="text-[11px] font-medium">Sound: OFF</span>
+            </>
+          ) : (
+            <>
+              <Volume2 className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+              <span className="text-[11px] font-medium">Sound: ON</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* 3. Subtle Natural Ambient Lighting */}
       <div className="fixed -top-40 left-1/2 -translate-x-1/2 w-[720px] h-[400px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="fixed -bottom-40 right-1/4 w-[550px] h-[350px] bg-violet-600/10 blur-[140px] rounded-full pointer-events-none" />
-      <div className="fixed inset-0 bg-[radial-gradient(rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
-      {/* Main Login Card */}
+      {/* 4. Main Login Card */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="w-full max-w-[440px] rounded-2xl bg-slate-900/85 border border-slate-800/80 backdrop-blur-2xl shadow-2xl p-6 sm:p-8 relative z-10 my-auto"
+        className="w-full max-w-[440px] rounded-2xl bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl shadow-2xl p-6 sm:p-8 relative z-10 my-auto"
       >
         {/* Brand & Header */}
         <div className="flex flex-col items-center text-center mb-5">
@@ -178,7 +251,11 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
 
         {/* Google Sign In Button */}
         <button
-          onClick={() => setIsGoogleModalOpen(true)}
+          onClick={() => {
+            soundFx.playClick();
+            setIsGoogleModalOpen(true);
+          }}
+          onMouseEnter={() => soundFx.playHover()}
           disabled={isLoading}
           className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm transition-all shadow-sm active:scale-[0.99] border border-slate-200 duration-150 disabled:opacity-70 cursor-pointer"
         >
@@ -217,11 +294,13 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
         <div className="grid grid-cols-2 p-1 bg-slate-950/70 rounded-xl border border-slate-800/80 mb-4">
           <button
             type="button"
+            onMouseEnter={() => soundFx.playHover()}
             onClick={() => {
+              soundFx.playTabSwitch();
               setTab('login');
               setError(null);
             }}
-            className={`py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
+            className={`py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
               tab === 'login'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -231,11 +310,13 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
           </button>
           <button
             type="button"
+            onMouseEnter={() => soundFx.playHover()}
             onClick={() => {
+              soundFx.playTabSwitch();
               setTab('signup');
               setError(null);
             }}
-            className={`py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
+            className={`py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
               tab === 'signup'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -267,6 +348,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
                   required
                   placeholder="Alex Parker"
                   value={username}
+                  onFocus={() => soundFx.playFocus()}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full bg-slate-950/60 border border-slate-800 rounded-xl pl-10 pr-3 py-2 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
                 />
@@ -285,6 +367,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
                 required
                 placeholder="you@example.com"
                 value={email}
+                onFocus={() => soundFx.playFocus()}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-slate-950/60 border border-slate-800 rounded-xl pl-10 pr-3 py-2 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
               />
@@ -302,13 +385,17 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
                 required
                 placeholder="••••••••••••"
                 value={password}
+                onFocus={() => soundFx.playFocus()}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-slate-950/60 border border-slate-800 rounded-xl pl-10 pr-10 py-2 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-2.5 text-slate-500 hover:text-slate-300 transition-colors"
+                onClick={() => {
+                  soundFx.playClick();
+                  setShowPassword(!showPassword);
+                }}
+                className="absolute right-3.5 top-2.5 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -318,6 +405,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
           <button
             type="submit"
             disabled={isLoading}
+            onMouseEnter={() => soundFx.playHover()}
             className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs sm:text-sm text-white bg-gradient-to-r from-indigo-500 via-indigo-600 to-violet-600 hover:from-indigo-400 hover:to-violet-500 shadow-md shadow-indigo-500/25 active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 disabled:opacity-70 mt-1 cursor-pointer"
           >
             {isLoading ? (
@@ -336,6 +424,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
           <button
             type="button"
             onClick={handleGuestEntry}
+            onMouseEnter={() => soundFx.playHover()}
             disabled={isLoading}
             className="w-full py-2 px-4 rounded-xl border border-slate-800 bg-slate-950/40 hover:bg-slate-800/50 text-slate-200 hover:text-white text-xs font-medium transition-all flex items-center justify-center gap-2 group cursor-pointer"
           >
@@ -402,6 +491,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
                 <input
                   type="text"
                   value={googleName}
+                  onFocus={() => soundFx.playFocus()}
                   onChange={(e) => setGoogleName(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
                 />
@@ -413,6 +503,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
                 <input
                   type="email"
                   value={googleEmail}
+                  onFocus={() => soundFx.playFocus()}
                   onChange={(e) => setGoogleEmail(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
                 />
@@ -422,7 +513,11 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
             <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
               <button
                 type="button"
-                onClick={() => setIsGoogleModalOpen(false)}
+                onMouseEnter={() => soundFx.playHover()}
+                onClick={() => {
+                  soundFx.playClick();
+                  setIsGoogleModalOpen(false);
+                }}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Cancel
@@ -430,6 +525,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
               <button
                 type="button"
                 disabled={isLoading}
+                onMouseEnter={() => soundFx.playHover()}
                 onClick={() => handleGoogleSignIn(googleEmail, googleName)}
                 className="px-4 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 transition-colors cursor-pointer"
               >
