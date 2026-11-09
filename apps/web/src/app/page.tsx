@@ -32,10 +32,13 @@ export default function LandingPage() {
       if (savedUser) {
         try {
           setUser(JSON.parse(savedUser));
+          setBootState('ready');
+          return;
         } catch {
           // ignore
         }
       }
+      setBootState('auth');
     }
   }, [setUser]);
 
@@ -51,19 +54,19 @@ export default function LandingPage() {
     setBootState('ready');
   };
 
+  // 1. If not authenticated or on auth screen, ONLY render the login page
+  if (bootState === 'auth' || !isAuthenticated) {
+    return <AuthPortal onSuccess={handleAuthSuccess} />;
+  }
+
+  // 2. Animated Cinematic Loading Screen (if explicitly booting)
+  if (bootState === 'loading') {
+    return <CinematicBootLoader onComplete={handleBootComplete} />;
+  }
+
+  // 3. Authenticated Landing Page & Interactive 3D Experience
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
-      {/* 1. Animated Cinematic Loading Screen */}
-      {bootState === 'loading' && (
-        <CinematicBootLoader onComplete={handleBootComplete} />
-      )}
-
-      {/* 2. Login/Signup Page with Google Sign-in */}
-      {bootState === 'auth' && (
-        <AuthPortal onSuccess={handleAuthSuccess} />
-      )}
-
-      {/* 3. The Actual Page (Landing Page & Interactive 3D Experience) */}
       {/* Hero Section with Live 3D Scene Viewport */}
       <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden border-b border-slate-800">
         {/* Background 3D Canvas */}

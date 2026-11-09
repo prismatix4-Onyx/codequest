@@ -17,6 +17,11 @@ export function Navbar() {
   const preferences = useStore((s) => s.preferences);
   const updatePreferences = useStore((s) => s.updatePreferences);
 
+  // If not authenticated, hide the navbar entirely so the login page only contains login content
+  if (!isAuthenticated) {
+    return null;
+  }
+
   const navItems = [
     { label: 'Cinematic Story', href: '/play', icon: PlayCircle },
     { label: 'World Explorer', href: '/explorer', icon: Compass },
@@ -29,15 +34,15 @@ export function Navbar() {
         {/* Logo */}
         <div className="flex items-center space-x-6">
           <Link href="/" className="flex items-center space-x-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.5)] group-hover:shadow-[0_0_20px_rgba(6,182,212,0.8)] transition-all">
-              <span className="text-white font-black text-sm tracking-tighter">CQ</span>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-all">
+              <span className="text-white font-bold text-xs tracking-tight">CQ</span>
             </div>
             <div>
-              <span className="font-black text-base md:text-lg tracking-wider text-slate-100 group-hover:text-cyan-400 transition-colors">
-                CODEQUEST
+              <span className="font-bold text-base tracking-tight text-white group-hover:text-indigo-300 transition-colors">
+                CodeQuest
               </span>
-              <span className="text-[10px] font-mono text-cyan-400 ml-1.5 px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20">
-                v2.0
+              <span className="text-[10px] font-medium text-indigo-400 ml-1.5 px-1.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+                2.0
               </span>
             </div>
           </Link>
@@ -53,7 +58,7 @@ export function Navbar() {
                   href={item.href}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                     isActive
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                      ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30'
                       : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
                   }`}
                 >
@@ -90,10 +95,10 @@ export function Navbar() {
               <img
                 src={user.avatarUrl}
                 alt={user.username}
-                className="w-5 h-5 rounded-full object-cover border border-cyan-400/50"
+                className="w-5 h-5 rounded-full object-cover border border-indigo-400/50"
               />
             ) : (
-              <div className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center font-bold text-[10px]">
+              <div className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-[10px]">
                 {user.username.charAt(0).toUpperCase()}
               </div>
             )}
@@ -103,10 +108,10 @@ export function Navbar() {
             <span className="text-slate-700">|</span>
             <span className="flex items-center gap-1 font-bold text-amber-400">
               <Zap className="w-3 h-3 fill-current" />
-              <span>{user.xp}</span>
+              <span>{user.xp} XP</span>
             </span>
             <span className="text-slate-700">|</span>
-            <span className="text-slate-300 font-mono font-medium">Lv.{user.level}</span>
+            <span className="text-slate-300 font-medium">Lv.{user.level}</span>
 
             {isAuthenticated && (
               <button
