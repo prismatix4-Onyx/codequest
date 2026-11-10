@@ -1,0 +1,24 @@
+# ARIA — Production Specifications
+
+- **Name**: ARIA (Advanced Responsive Intelligence Assistant)
+- **Role**: Primary AI companion & Python coding mentor
+- **Origin**: Aethelgard Orbital Cybernetics Laboratory
+- **Visual Aesthetic**: Stylized Humanoid Hologram
+- **Palette**:
+  - Primary Cyber Suit: `#1E1B4B` (Deep Navy Violet)
+  - Hologram Luminescence: `#38BDF8` (Luminous Sky Cyan)
+  - Secondary Accents: `#A855F7` (Electric Purple)
+  - Skin / Face: Soft translucent porcelain with subtle subsurface cyan glow
+- **Key Rigged Components**:
+  - Armature: `ARIA_Rig`
+  - Head, Neck, Spine, Arms (Upper/Lower/Hand), Legs (Thigh/Shin/Foot)
+  - Eyebrows & Jaw bones for expressive speech
+- **Animation Actions**:
+  - `ARIA_Idle`
+  - `ARIA_Talking`
+  - `ARIA_Listening`
+  - `ARIA_Thinking`
+  - `ARIA_Surprised`
+  - `ARIA_Happy`
+  - `ARIA_Concerned`
+  - `ARIA_Mission_Success`
