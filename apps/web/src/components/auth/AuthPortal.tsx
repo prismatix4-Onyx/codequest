@@ -227,7 +227,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-start sm:justify-center p-4 sm:p-6 py-8 sm:py-12 bg-[#0B0F19] relative overflow-y-auto select-none">
+    <div className="min-h-screen w-full flex flex-col items-center justify-start sm:justify-center p-3 sm:p-6 py-4 sm:py-8 pb-16 sm:pb-12 bg-[#0B0F19] relative overflow-y-auto select-none">
       {/* 1. Interactive Gamified Background Canvas with Constellations & Python Tokens */}
       <GamifiedLoginCanvas />
 
@@ -263,17 +263,17 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="w-full max-w-[440px] rounded-2xl bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl shadow-2xl p-6 sm:p-8 relative z-10 my-auto"
+        className="w-full max-w-[420px] rounded-2xl bg-slate-900/95 border border-slate-800/90 backdrop-blur-2xl shadow-2xl p-5 sm:p-6 relative z-10 my-auto"
       >
         {/* Brand & Header */}
-        <div className="flex flex-col items-center text-center mb-5">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 via-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 mb-3 text-white">
+        <div className="flex flex-col items-center text-center mb-4">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 mb-2 text-white">
             <Code2 className="w-5 h-5" />
           </div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white whitespace-nowrap">
             Welcome to CodeQuest
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed max-w-sm">
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-sm">
             Learn Python through interactive stories, hands-on challenges, and live code execution.
           </p>
         </div>
@@ -286,7 +286,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
           }}
           onMouseEnter={() => soundFx.playHover()}
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm transition-all shadow-sm active:scale-[0.99] border border-slate-200 duration-150 disabled:opacity-70 cursor-pointer"
+          className="w-full flex items-center justify-center gap-3 py-2 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs sm:text-sm transition-all shadow-sm active:scale-[0.99] border border-slate-200 duration-150 disabled:opacity-70 cursor-pointer"
         >
           {/* Authentic Google SVG Logo */}
           <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
@@ -311,16 +311,16 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
         </button>
 
         {/* Divider with robust flex-grow and whitespace-nowrap */}
-        <div className="flex items-center my-4 w-full">
+        <div className="flex items-center my-3 w-full">
           <div className="flex-grow border-t border-slate-800" />
-          <span className="flex-shrink-0 px-3 text-xs text-slate-400 font-medium whitespace-nowrap">
+          <span className="flex-shrink-0 px-3 text-[11px] text-slate-400 font-medium whitespace-nowrap">
             or continue with email
           </span>
           <div className="flex-grow border-t border-slate-800" />
         </div>
 
         {/* Modern Pill Switcher (Sign In / Create Account) */}
-        <div className="grid grid-cols-2 p-1 bg-slate-950/70 rounded-xl border border-slate-800/80 mb-4">
+        <div className="grid grid-cols-2 p-1 bg-slate-950/70 rounded-xl border border-slate-800/80 mb-3">
           <button
             type="button"
             onMouseEnter={() => soundFx.playHover()}
@@ -448,8 +448,8 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
         </form>
 
         {/* Guest Instant Access Option */}
-        <div className="mt-4 pt-3.5 border-t border-slate-800/80 text-center">
-          <p className="text-xs text-slate-400 mb-2 whitespace-nowrap">Want to explore first without an account?</p>
+        <div className="mt-3.5 pt-3 border-t border-slate-800/80 text-center">
+          <p className="text-[11px] text-slate-400 mb-1.5 whitespace-nowrap">Want to explore first without an account?</p>
           <button
             type="button"
             onClick={handleGuestEntry}
@@ -464,7 +464,7 @@ export function AuthPortal({ onSuccess }: AuthPortalProps) {
       </motion.div>
 
       {/* Trust & Feature Highlights Below Card */}
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs text-slate-400 relative z-10 text-center">
+      <div className="mt-4 mb-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs text-slate-400 relative z-10 text-center">
         <span className="flex items-center gap-1.5 whitespace-nowrap">
           <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
           Interactive Python 3.12

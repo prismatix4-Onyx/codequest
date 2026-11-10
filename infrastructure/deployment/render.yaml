@@ -7,7 +7,7 @@ services:
     region: oregon
     rootDir: .
     buildCommand: npm install --include=dev && npx prisma generate --schema=packages/database/prisma/schema.prisma && npm run build --workspace=@codequest/shared-types --workspace=@codequest/story-schema --workspace=@codequest/python-curriculum --workspace=@codequest/learning-engine --workspace=@codequest/database --workspace=@codequest/api
-    startCommand: node --experimental-require-module apps/api/dist/main.js
+    startCommand: node apps/api/dist/main.js
     envVars:
       - key: NODE_ENV
         value: production

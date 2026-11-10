@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "tsc",
-    "start": "node --experimental-require-module dist/main.js",
+    "start": "node dist/main.js",
     "start:dev": "tsx watch src/main.ts"
   },
   "dependencies": {
@@ -12,11 +12,11 @@
     "@codequest/python-curriculum": "*",
     "@codequest/shared-types": "*",
     "@codequest/story-schema": "*",
-    "@nestjs/common": "^10.4.16",
-    "@nestjs/core": "^10.4.16",
+    "@nestjs/common": "10.4.15",
+    "@nestjs/core": "10.4.15",
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/passport": "^10.0.3",
-    "@nestjs/platform-express": "^10.4.16",
+    "@nestjs/platform-express": "10.4.15",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
