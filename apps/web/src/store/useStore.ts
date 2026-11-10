@@ -96,6 +96,7 @@ export const useStore = create<AppState>((set, get) => {
     setTheme: (theme) => {
       set({ theme });
       if (typeof window !== 'undefined') {
+        localStorage.setItem('codequest_theme', theme);
         const root = document.documentElement;
         root.classList.remove('light', 'dark');
         if (theme === 'system') {

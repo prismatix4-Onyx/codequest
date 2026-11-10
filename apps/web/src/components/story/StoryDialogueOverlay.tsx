@@ -4,8 +4,10 @@ import React from 'react';
 import { Volume2, VolumeX, RotateCcw, ChevronRight, Sparkles } from 'lucide-react';
 import { Button } from '@codequest/ui';
 import { useStore } from '@/store/useStore';
+import { soundFx } from '@/utils/soundEffects';
 
 export function StoryDialogueOverlay() {
+  const user = useStore((s) => s.user);
   const currentScene = useStore((s) => s.currentScene);
   const currentDialogue = useStore((s) => s.currentDialogue);
   const dialogueIndex = useStore((s) => s.dialogueIndex);
@@ -20,9 +22,20 @@ export function StoryDialogueOverlay() {
   if (!currentDialogue) return null;
 
   const toggleMute = () => {
+    soundFx.playClick();
     const isMuted = audioEngine.toggleMute();
     updatePreferences({ voiceVolume: isMuted ? 0 : 0.85 });
   };
+
+  const handleAdvance = () => {
+    soundFx.playClick();
+    advanceDialogue();
+  };
+
+  // Personalize dialogue text if user customized their explorer username
+  const displayText = user.username && user.username !== 'Cadet_Aethelgard' && user.username !== 'Guest Explorer'
+    ? currentDialogue.text.replace(/\b(Engineer|Adventurer)\b/g, user.username)
+    : currentDialogue.text;
 
   return (
     <div className="absolute bottom-6 inset-x-4 md:inset-x-12 z-20 flex flex-col items-center pointer-events-none">
@@ -80,7 +93,7 @@ export function StoryDialogueOverlay() {
 
         {/* Dialogue Body & Subtitle */}
         <div className="py-2 text-slate-100 text-base md:text-lg leading-relaxed font-sans min-h-[4rem]">
-          {currentDialogue.text}
+          {displayText}
         </div>
 
         {/* Action Controls */}
@@ -94,7 +107,7 @@ export function StoryDialogueOverlay() {
           <Button
             variant="glow-cyan"
             size="md"
-            onClick={advanceDialogue}
+            onClick={handleAdvance}
             className="flex items-center gap-1.5 shadow-cyan-500/30"
           >
             <span>{dialogueIndex < totalDialogue - 1 ? 'Next' : 'Continue'}</span>

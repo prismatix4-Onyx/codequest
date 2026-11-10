@@ -144,16 +144,16 @@ export interface ThemeToggleProps {
 
 export const ThemeToggle: React.FC<ThemeToggleProps> = ({ currentTheme, onThemeChange }) => {
   return (
-    <div className="inline-flex rounded-lg border border-slate-700/60 bg-slate-900/60 p-1 backdrop-blur-md">
+    <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/80 p-0.5 backdrop-blur-md transition-colors">
       {(['light', 'dark', 'system'] as const).map((mode) => (
         <button
           key={mode}
           onClick={() => onThemeChange(mode)}
           className={cn(
-            'px-2.5 py-1 text-xs font-medium rounded-md capitalize transition-colors',
+            'px-2.5 py-1 text-xs font-semibold rounded-md capitalize transition-all duration-150 cursor-pointer',
             currentTheme === mode
-              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 dark:bg-indigo-600 dark:text-white dark:border-transparent'
+              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
           )}
         >
           {mode}

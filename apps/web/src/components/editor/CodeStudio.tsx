@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, Badge } from '@codequest/ui';
 import { useStore } from '@/store/useStore';
+import { soundFx } from '@/utils/soundEffects';
 
 export function CodeStudio() {
   const activeMission = useStore((s) => s.activeMission);
@@ -87,7 +88,16 @@ export function CodeStudio() {
             variant="glow-cyan"
             size="sm"
             isLoading={isExecuting}
-            onClick={runCodeSubmission}
+            onClick={async () => {
+              soundFx.playClick();
+              await runCodeSubmission();
+              const latest = useStore.getState().executionResult;
+              if (latest?.allPassed) {
+                soundFx.playSuccess();
+              } else {
+                soundFx.playError();
+              }
+            }}
             className="flex items-center gap-1.5 px-4"
           >
             <Play className="w-4 h-4 fill-current" />
@@ -242,18 +252,34 @@ export function CodeStudio() {
             })}
           </div>
 
-          {/* Console Standard Output */}
-          <div className="flex-1 flex flex-col min-h-[8rem] bg-black/60 rounded-lg p-2.5 border border-slate-800 font-mono text-xs">
-            <div className="text-slate-500 mb-1 border-b border-slate-800 pb-1">
-              Standard Output (stdout)
+          {/* Console Standard Output & Execution Stream */}
+          <div className="flex-1 flex flex-col min-h-[9rem] bg-black/80 rounded-xl p-3 border border-slate-800 font-mono text-xs">
+            <div className="flex items-center justify-between text-slate-500 mb-1.5 border-b border-slate-800 pb-1.5">
+              <span>Interactive Python Stream</span>
+              <span className="text-[10px] text-slate-600">CPython 3.12</span>
             </div>
-            <pre className="flex-1 text-cyan-300 whitespace-pre-wrap overflow-y-auto">
-              {executionResult?.stdout || 'Awaiting program execution...'}
-            </pre>
-            {executionResult?.stderr && (
-              <pre className="text-rose-400 whitespace-pre-wrap mt-2 border-t border-rose-900/40 pt-1">
-                {executionResult.stderr}
-              </pre>
+
+            {executionResult ? (
+              <div className="space-y-1 overflow-y-auto flex-1">
+                <div className="text-slate-400 text-[11px]">&gt;&gt;&gt; python mission_script.py</div>
+                {executionResult.stdout && (
+                  <pre className="text-cyan-300 whitespace-pre-wrap leading-relaxed">
+                    {executionResult.stdout}
+                  </pre>
+                )}
+                {executionResult.stderr && (
+                  <pre className="text-rose-400 whitespace-pre-wrap leading-relaxed border-t border-rose-900/40 pt-1">
+                    {executionResult.stderr}
+                  </pre>
+                )}
+                <div className={`text-[11px] pt-1 border-t border-slate-800/80 ${executionResult.allPassed ? 'text-emerald-400 font-bold' : 'text-amber-400'}`}>
+                  [STATUS] Process exited with code {executionResult.allPassed ? '0 (SUCCESS)' : '1 (REPAIR_REQUIRED)'}
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-slate-600 italic">
+                Awaiting program execution... Press &quot;Run Program&quot; to test your code.
+              </div>
             )}
           </div>
 

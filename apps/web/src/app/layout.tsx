@@ -2,6 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 
 export const metadata: Metadata = {
   title: 'CODEQUEST 2.0 — Cinematic 3D Interactive Programming Education',
@@ -11,10 +12,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen flex flex-col bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
-        <Navbar />
-        <main className="flex-1 flex flex-col">{children}</main>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-indigo-200 transition-colors duration-200">
+        <ThemeProvider>
+          <Navbar />
+          <main className="flex-1 flex flex-col">{children}</main>
+        </ThemeProvider>
       </body>
     </html>
   );
