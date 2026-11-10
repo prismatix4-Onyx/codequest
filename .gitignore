@@ -5,9 +5,10 @@ node_modules/
 # Build outputs
 .next/
 out/
-dist/
+apps/*/dist/
 build/
 *.tsbuildinfo
+!packages/*/dist/
 
 # Python
 __pycache__/
