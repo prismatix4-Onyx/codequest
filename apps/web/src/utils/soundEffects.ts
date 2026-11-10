@@ -219,6 +219,33 @@ class SoundEffectsEngine {
       osc.stop(ctx.currentTime + 0.22);
     } catch {}
   }
+
+  // 8. Sci-Fi Klaxon / Emergency Warning Alarm
+  public playWarning() {
+    if (this.isMuted) return;
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      const now = ctx.currentTime;
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(380, now + 0.35);
+
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.linearRampToValueAtTime(0.12, now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.36);
+    } catch {}
+  }
 }
 
 export const soundFx = new SoundEffectsEngine();

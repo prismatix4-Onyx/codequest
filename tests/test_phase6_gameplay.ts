@@ -30,6 +30,8 @@ async function runPhase6Tests() {
   const res1 = await submissionsService.executeSubmission(userId, missionId, correctCode);
   console.log('Status:', res1.status);
   console.log('allPassed:', res1.allPassed);
+  console.log('error:', res1.error);
+  console.log('stderr:', res1.stderr);
   console.log('testResults count:', res1.testResults.length);
   console.log('feedback:', res1.feedback);
 

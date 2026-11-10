@@ -31,14 +31,16 @@ function PlayPageContent() {
   const [isPlayingCinematic, setIsPlayingCinematic] = useState(false);
 
   useEffect(() => {
+    // Stop any residual speech synthesis from previous pages
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
     // If explicitly requested via ?intro=true, open cinematic
     if (searchParams.get('intro') === 'true') {
       setIsPlayingCinematic(true);
       return;
     }
-
-    // Initialize campaign
-    startCampaign();
 
     if (typeof window !== 'undefined') {
       const isCustomName = localStorage.getItem('cq_adventure_name_set');
@@ -51,11 +53,14 @@ function PlayPageContent() {
         }, 800);
         return () => clearTimeout(timer);
       } else if (!hasWatchedCinematic) {
-        // Step 2: Play the cinematic if username is set and cinematic haven't been completed yet
+        // Step 2: Play the cinematic if username is set and cinematic hasn't been completed yet
         setIsPlayingCinematic(true);
+      } else {
+        // Step 3: Only start campaign story dialogue if not playing cinematic
+        startCampaign();
       }
     }
-  }, [startCampaign]);
+  }, [startCampaign, searchParams]);
 
   const handleUsernameComplete = (newUsername: string) => {
     if (typeof window !== 'undefined') {

@@ -2,6 +2,7 @@ import asyncio
 import io
 import json
 import os
+import subprocess
 import sys
 import time
 import traceback
@@ -86,6 +87,15 @@ def health_check():
   }
 
 
+def _run_isolated_process(runner_code: str, timeout: float):
+  return subprocess.run(
+      [sys.executable, "-s", "-u", "-c", runner_code],
+      capture_output=True,
+      text=True,
+      timeout=timeout,
+  )
+
+
 @app.post("/execute", response_model=ExecutionResponse)
 async def execute_code(req: ExecutionRequest):
   # 1. Pre-execution static security audit
@@ -143,91 +153,68 @@ sys.stdin = io.StringIO(test_input)
 """
 
     try:
-      proc = await asyncio.create_subprocess_exec(
-          sys.executable,
-          "-s",
-          "-S",
-          "-u",
-          "-c",
-          runner_code,
-          stdout=asyncio.subprocess.PIPE,
-          stderr=asyncio.subprocess.PIPE,
+      proc = await asyncio.to_thread(_run_isolated_process, runner_code, timeout)
+      duration_ms = (time.perf_counter() - start_time) * 1000
+
+      stdout_str = proc.stdout[:MAX_OUTPUT_CHARS]
+      stderr_str = proc.stderr[:MAX_OUTPUT_CHARS]
+
+      if not first_run_stdout:
+        first_run_stdout = stdout_str
+      if not first_run_stderr:
+        first_run_stderr = stderr_str
+
+      # Evaluate against expected output
+      norm_actual = stdout_str.strip().replace("\r\n", "\n")
+      norm_expected = tc.expectedOutput.strip().replace("\r\n", "\n")
+
+      # Either exact match or if expected is contained
+      passed = (
+          (proc.returncode == 0)
+          and (
+              norm_expected in norm_actual
+              if norm_expected
+              else proc.returncode == 0
+          )
       )
 
-      try:
-        raw_stdout, raw_stderr = await asyncio.wait_for(
-            proc.communicate(), timeout=timeout
-        )
-        duration_ms = (time.perf_counter() - start_time) * 1000
-
-        stdout_str = raw_stdout.decode("utf-8", errors="replace")[
-            :MAX_OUTPUT_CHARS
-        ]
-        stderr_str = raw_stderr.decode("utf-8", errors="replace")[
-            :MAX_OUTPUT_CHARS
-        ]
-
-        if not first_run_stdout:
-          first_run_stdout = stdout_str
-        if not first_run_stderr:
-          first_run_stderr = stderr_str
-
-        # Evaluate against expected output
-        norm_actual = stdout_str.strip().replace("\r\n", "\n")
-        norm_expected = tc.expectedOutput.strip().replace("\r\n", "\n")
-
-        # Either exact match or if expected is contained
-        passed = (
-            (proc.returncode == 0)
-            and (
-                norm_expected in norm_actual
-                if norm_expected
-                else proc.returncode == 0
-            )
-        )
-
-        test_results.append(
-            TestCaseResult(
-                testId=tc.id,
-                description=tc.description,
-                passed=passed,
-                actualOutput=norm_actual if not tc.isHidden else "[HIDDEN TEST]",
-                expectedOutput=(
-                    norm_expected if not tc.isHidden else "[HIDDEN TEST]"
-                ),
-                error=stderr_str if proc.returncode != 0 else None,
-                isHidden=tc.isHidden,
-            )
-        )
-
-        if proc.returncode != 0 and not tc.isHidden:
-          return ExecutionResponse(
-              status="runtime_error",
-              stdout=first_run_stdout,
-              stderr=stderr_str,
-              executionTimeMs=duration_ms,
-              allPassed=False,
-              testResults=test_results,
-              error=stderr_str,
-              feedback=f"Runtime error encountered: {stderr_str.splitlines()[-1] if stderr_str.splitlines() else 'Execution failed'}",
+      test_results.append(
+          TestCaseResult(
+              testId=tc.id,
+              description=tc.description,
+              passed=passed,
+              actualOutput=norm_actual if not tc.isHidden else "[HIDDEN TEST]",
+              expectedOutput=(
+                  norm_expected if not tc.isHidden else "[HIDDEN TEST]"
+              ),
+              error=stderr_str if proc.returncode != 0 else None,
+              isHidden=tc.isHidden,
           )
+      )
 
-      except asyncio.TimeoutError:
-        try:
-          proc.kill()
-        except Exception:
-          pass
+      if proc.returncode != 0 and not tc.isHidden:
         return ExecutionResponse(
-            status="timeout",
+            status="runtime_error",
             stdout=first_run_stdout,
-            stderr="Execution timed out (exceeded limit).",
-            executionTimeMs=timeout * 1000,
+            stderr=stderr_str,
+            executionTimeMs=duration_ms,
             allPassed=False,
             testResults=test_results,
-            error=f"Timeout: Execution exceeded {timeout}s limit.",
-            feedback="Your program appears to have an infinite loop or blocking call.",
+            error=stderr_str,
+            feedback=f"Runtime error encountered: {stderr_str.splitlines()[-1] if stderr_str.splitlines() else 'Execution failed'}",
         )
 
+    except subprocess.TimeoutExpired:
+      return ExecutionResponse(
+          status="timeout",
+          stdout=first_run_stdout,
+          stderr="Execution timed out (exceeded limit).",
+          executionTimeMs=timeout * 1000,
+          allPassed=False,
+          testResults=test_results,
+          error=f"Timeout: Execution exceeded {timeout}s limit.",
+          feedback="Your program appears to have an infinite loop or blocking call.",
+      )
     except Exception as ex:
       return ExecutionResponse(
           status="system_error",

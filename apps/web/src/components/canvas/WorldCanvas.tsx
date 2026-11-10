@@ -74,11 +74,31 @@ export function WorldCanvas({
         {/* Background Deep Space Stars */}
         <Stars radius={70} depth={50} count={starCount} factor={4} saturation={0} fade speed={1.2} />
 
-        {/* Cinematic Artistic Lighting (Independent of UI theme) */}
-        <ambientLight intensity={0.45} />
-        <directionalLight position={[6, 9, 6]} intensity={1.2} color="#f0f5ff" />
+        {/* Cyberpunk Atmospheric Depth Fog */}
+        <fog attach="fog" args={['#030712', 4, 30]} />
+
+        {/* Cinematic Artistic Lighting */}
+        <ambientLight intensity={reactorState === 'critical' ? 0.35 : 0.55} color={reactorState === 'critical' ? '#ffe4e6' : '#ecfeff'} />
+        <directionalLight position={[6, 10, 6]} intensity={1.2} color="#f0f5ff" />
+        
+        {/* Overhead Catwalk Spotlights (Screenshot 1) */}
+        <spotLight
+          position={[0, 7.5, 0]}
+          target-position={[0, 0, 0]}
+          intensity={2.2}
+          angle={0.65}
+          penumbra={0.7}
+          color="#cffafe"
+        />
+
+        {/* Ambient Side Accent Lights */}
         <pointLight position={[-4, 3, -1]} intensity={2.0} color="#00e5ff" distance={16} />
         <pointLight position={[4, 3, -1]} intensity={1.5} color="#818cf8" distance={14} />
+
+        {/* Emergency Hazard Warning Light Bar in Critical State */}
+        {reactorState === 'critical' && (
+          <pointLight position={[0, 4.0, -2.0]} intensity={3.0} color="#ff0033" distance={14} />
+        )}
 
         {/* Camera Control: Driven by Cinematic timeline or manual orbit */}
         {enableOrbitControls ? (

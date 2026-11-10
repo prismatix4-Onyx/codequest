@@ -45,6 +45,7 @@ export function CinematicPlayer({
   // Animation frame tracker
   const lastTimestampRef = useRef<number | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const lastSpokenShotRef = useRef<number | null>(null);
 
   // Active shot computation
   const activeShot: CinematicShot =
@@ -53,6 +54,78 @@ export function CinematicPlayer({
 
   const currentAriaAnim: AriaAnimationState = activeShot?.ariaAnimation || 'idle';
   const currentReactorState: ReactorState = activeShot?.reactorState || 'critical';
+
+  // Voice narration and sound effects per shot
+  useEffect(() => {
+    if (!isPlaying || isMuted) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      return;
+    }
+
+    if (activeShot?.id !== lastSpokenShotRef.current) {
+      lastSpokenShotRef.current = activeShot.id;
+
+      if (activeShot?.dialogue && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+
+        const speaker = activeShot.dialogue.speaker || '';
+        const rawText = activeShot.dialogue.text || '';
+        const cleanText = rawText.replace(/\([^)]*\)/g, '').trim();
+
+        // Sound effects per narrative moment
+        if (speaker.includes('ORPHEUS') || speaker.includes('SYSTEM')) {
+          soundFx.playWarning();
+        } else if (speaker.includes('ARIA')) {
+          soundFx.playHover();
+        }
+
+        if (cleanText) {
+          const utterance = new SpeechSynthesisUtterance(cleanText);
+          const isSystem = speaker.includes('ORPHEUS') || speaker.includes('SYSTEM');
+
+          utterance.rate = isSystem ? 0.95 : 1.05;
+          utterance.pitch = isSystem ? 0.85 : 1.15;
+          utterance.volume = 1.0;
+
+          const voices = window.speechSynthesis.getVoices();
+          const targetVoice = isSystem
+            ? voices.find(
+                (v) =>
+                  v.lang.startsWith('en') &&
+                  (v.name.includes('David') ||
+                    v.name.includes('Male') ||
+                    v.name.includes('Microsoft'))
+              )
+            : voices.find(
+                (v) =>
+                  v.lang.startsWith('en') &&
+                  (v.name.includes('Female') ||
+                    v.name.includes('Zira') ||
+                    v.name.includes('Samantha') ||
+                    v.name.includes('Google US English') ||
+                    v.name.includes('Natural'))
+              );
+
+          if (targetVoice) {
+            utterance.voice = targetVoice;
+          }
+
+          window.speechSynthesis.speak(utterance);
+        }
+      }
+    }
+  }, [activeShot?.id, isPlaying, isMuted, activeShot?.dialogue]);
+
+  // Clean up any ongoing audio when player unmounts
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   // Deterministic tick loop
   useEffect(() => {
@@ -92,14 +165,26 @@ export function CinematicPlayer({
   const handleTogglePlay = useCallback(() => {
     soundFx.playClick();
     if (currentTime >= TOTAL_CINEMATIC_DURATION) {
+      lastSpokenShotRef.current = null;
       setCurrentTime(0);
       setIsPlaying(true);
     } else {
-      setIsPlaying((prev) => !prev);
+      setIsPlaying((prev) => {
+        const next = !prev;
+        if (!next && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          window.speechSynthesis.pause();
+        } else if (next && typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        return next;
+      });
     }
   }, [currentTime]);
 
   const handleSkip = useCallback(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     soundFx.playClick();
     setIsPlaying(false);
     setCurrentTime(TOTAL_CINEMATIC_DURATION);
@@ -111,14 +196,24 @@ export function CinematicPlayer({
   }, [onSkip, onComplete]);
 
   const handleReplay = useCallback(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     soundFx.playClick();
+    lastSpokenShotRef.current = null;
     setCurrentTime(0);
     setIsPlaying(true);
   }, []);
 
   const handleToggleMute = useCallback(() => {
     soundFx.playClick();
-    setIsMuted((prev) => !prev);
+    setIsMuted((prev) => {
+      const next = !prev;
+      if (next && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      return next;
+    });
   }, []);
 
   const handleToggleSubtitles = useCallback(() => {
