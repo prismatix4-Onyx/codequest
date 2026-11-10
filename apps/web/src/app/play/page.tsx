@@ -1,41 +1,57 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { StationBridgeScene } from '@/components/3d/StationBridgeScene';
+import React, { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { WorldCanvas } from '@/components/canvas/WorldCanvas';
+import { CinematicPlayer } from '@/components/story/CinematicPlayer';
 import { StoryDialogueOverlay } from '@/components/story/StoryDialogueOverlay';
 import { DecisionModal } from '@/components/story/DecisionModal';
 import { ThinkBeforeYouCodeModal } from '@/components/story/ThinkBeforeYouCodeModal';
 import { CodeStudio } from '@/components/editor/CodeStudio';
 import { CodeUsernameTerminal } from '@/components/story/CodeUsernameTerminal';
 import { useStore } from '@/store/useStore';
-import { Play, Sparkles, Terminal, Code2 } from 'lucide-react';
+import { Play, Sparkles, Terminal, Code2, RotateCcw, Activity } from 'lucide-react';
 import { Button } from '@codequest/ui';
 import { soundFx } from '@/utils/soundEffects';
 
-export default function PlayPage() {
+function PlayPageContent() {
+  const searchParams = useSearchParams();
   const user = useStore((s) => s.user);
   const currentScene = useStore((s) => s.currentScene);
   const startCampaign = useStore((s) => s.startCampaign);
   const environmentState = useStore((s) => s.environmentState);
+  const reactorState = useStore((s) => s.reactorState);
+  const ariaAnimation = useStore((s) => s.ariaAnimation);
   const isEditorOpen = useStore((s) => s.isEditorOpen);
   const openMission = useStore((s) => s.openMission);
   const advanceDialogue = useStore((s) => s.advanceDialogue);
 
   const [isUsernameTerminalOpen, setIsUsernameTerminalOpen] = useState(false);
+  const [isPlayingCinematic, setIsPlayingCinematic] = useState(false);
 
   useEffect(() => {
-    // Initialize campaign if not already started
+    // If explicitly requested via ?intro=true, open cinematic
+    if (searchParams.get('intro') === 'true') {
+      setIsPlayingCinematic(true);
+      return;
+    }
+
+    // Initialize campaign
     startCampaign();
 
-    // Check if adventurer has customized their username through coding
     if (typeof window !== 'undefined') {
-      const isCustom = localStorage.getItem('cq_adventure_name_set');
-      if (!isCustom) {
-        // Pop the interactive username coding prompt right after introductory scene loads
+      const isCustomName = localStorage.getItem('cq_adventure_name_set');
+      const hasWatchedCinematic = localStorage.getItem('cq_cinematic_completed');
+
+      if (!isCustomName) {
+        // Step 1: Prompt the adventurer to initialize their username via code
         const timer = setTimeout(() => {
           setIsUsernameTerminalOpen(true);
-        }, 1200);
+        }, 800);
         return () => clearTimeout(timer);
+      } else if (!hasWatchedCinematic) {
+        // Step 2: Play the cinematic if username is set and cinematic haven't been completed yet
+        setIsPlayingCinematic(true);
       }
     }
   }, [startCampaign]);
@@ -45,64 +61,107 @@ export default function PlayPage() {
       localStorage.setItem('cq_adventure_name_set', 'true');
     }
     setIsUsernameTerminalOpen(false);
-    advanceDialogue();
+    // After username is initialized, trigger the cinematic opening
+    setIsPlayingCinematic(true);
+  };
+
+  const handleCinematicComplete = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cq_cinematic_completed', 'true');
+    }
+    setIsPlayingCinematic(false);
+    // Open the first mission challenge
+    openMission(currentScene?.missionId || 'mission-lp-01');
+    soundFx.playSuccess();
+  };
+
+  const handleReplayCinematic = () => {
+    soundFx.playClick();
+    setIsPlayingCinematic(true);
   };
 
   return (
     <div className="relative flex-1 w-full h-[calc(100vh-61px)] overflow-hidden bg-slate-950 flex flex-col">
-      {/* 3D Cinematic Game Viewport (Full Screen) */}
-      <div className="absolute inset-0 z-0">
-        <StationBridgeScene />
-      </div>
+      {/* 1. Cinematic Opening Player Overlay (When active) */}
+      {isPlayingCinematic ? (
+        <div className="absolute inset-0 z-30 animate-fadeIn">
+          <CinematicPlayer
+            onComplete={handleCinematicComplete}
+            onSkip={handleCinematicComplete}
+            initialAutoplay={true}
+          />
+        </div>
+      ) : (
+        /* 2. Live 3D World Canvas Viewport (ORPHEUS Bridge, ARIA, Reactor Core) */
+        <div className="absolute inset-0 z-0">
+          <WorldCanvas
+            enableOrbitControls={true}
+            ariaAnimation={ariaAnimation}
+            reactorState={reactorState}
+          />
+        </div>
+      )}
 
       {/* Top Scene HUD Header */}
-      <div className="relative z-10 p-4 md:p-6 flex items-start justify-between pointer-events-none">
-        <div className="glass-panel px-4 py-2 rounded-xl border border-slate-700/60 pointer-events-auto">
-          <div className="flex items-center space-x-2 text-xs font-mono text-cyan-400">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>ORBITAL STATION AETHELGARD</span>
+      {!isPlayingCinematic && (
+        <div className="relative z-10 p-4 md:p-6 flex items-start justify-between pointer-events-none">
+          <div className="glass-panel px-4 py-2 rounded-xl border border-slate-700/60 pointer-events-auto">
+            <div className="flex items-center space-x-2 text-xs font-mono text-cyan-400">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>ORPHEUS BRIDGE — CHAPTER 1</span>
+            </div>
+            <h2 className="text-sm md:text-base font-bold text-slate-100">
+              {currentScene?.title || 'The Silent Vessel'}
+            </h2>
           </div>
-          <h2 className="text-sm md:text-base font-bold text-slate-100">
-            {currentScene?.title || 'Nexus Bridge Diagnostics'}
-          </h2>
-        </div>
 
-        {/* Right HUD Controls: Username Coding Terminal & Diagnostics Badge */}
-        <div className="flex items-center space-x-3 pointer-events-auto">
-          {/* Quick Trigger for Username Coding REPL */}
-          <button
-            onClick={() => {
-              soundFx.playClick();
-              setIsUsernameTerminalOpen(true);
-            }}
-            onMouseEnter={() => soundFx.playHover()}
-            title="Open Interactive Username Coding REPL"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-400/50 text-indigo-300 text-xs font-mono font-semibold transition-all shadow-md cursor-pointer backdrop-blur-md"
-          >
-            <Code2 className="w-3.5 h-3.5 text-indigo-400" />
-            <span>username=input()</span>
-          </button>
-
-          {/* System Diagnostics Badge */}
-          <div className="glass-panel px-3 py-1.5 rounded-lg border border-slate-700/60 flex items-center space-x-2">
-            <span
-              className={`w-2.5 h-2.5 rounded-full animate-ping ${
-                environmentState.powerState === 'online' ? 'bg-cyan-400' : 'bg-rose-500'
-              }`}
-            />
-            <span
-              className={`text-xs font-mono font-bold tracking-wider ${
-                environmentState.powerState === 'online' ? 'text-cyan-300' : 'text-rose-400'
-              }`}
+          {/* Right HUD Controls: Replay Cinematic, Username REPL & Diagnostics Badge */}
+          <div className="flex items-center space-x-3 pointer-events-auto">
+            {/* Replay Cinematic Button */}
+            <button
+              onClick={handleReplayCinematic}
+              title="Replay Opening Cinematic Sequence"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-xs font-medium transition-all shadow-md cursor-pointer backdrop-blur-md"
             >
-              {environmentState.statusText}
-            </span>
+              <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden sm:inline">Replay Intro</span>
+            </button>
+
+            {/* Quick Trigger for Username Coding REPL */}
+            <button
+              onClick={() => {
+                soundFx.playClick();
+                setIsUsernameTerminalOpen(true);
+              }}
+              onMouseEnter={() => soundFx.playHover()}
+              title="Open Interactive Username Coding REPL"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-400/50 text-indigo-300 text-xs font-mono font-semibold transition-all shadow-md cursor-pointer backdrop-blur-md"
+            >
+              <Code2 className="w-3.5 h-3.5 text-indigo-400" />
+              <span>username=input()</span>
+            </button>
+
+            {/* System Diagnostics Badge */}
+            <div className="glass-panel px-3 py-1.5 rounded-lg border border-slate-700/60 flex items-center space-x-2">
+              <span
+                className={`w-2.5 h-2.5 rounded-full animate-ping ${
+                  environmentState.powerState === 'online' ? 'bg-cyan-400' : 'bg-rose-500'
+                }`}
+              />
+              <span
+                className={`text-xs font-mono font-bold tracking-wider ${
+                  environmentState.powerState === 'online' ? 'text-cyan-300' : 'text-rose-400'
+                }`}
+              >
+                {environmentState.statusText}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Floating Mission Quick Launcher if in challenge scene and editor was closed */}
-      {currentScene?.type === 'challenge' && !isEditorOpen && (
+      {!isPlayingCinematic && currentScene?.type === 'challenge' && !isEditorOpen && (
         <div className="absolute top-20 right-6 z-20">
           <Button
             variant="glow-cyan"
@@ -116,10 +175,14 @@ export default function PlayPage() {
         </div>
       )}
 
-      {/* Interactive Story Components */}
-      <StoryDialogueOverlay />
-      <DecisionModal />
-      <ThinkBeforeYouCodeModal />
+      {/* Interactive Story Components (When not in full cinematic mode) */}
+      {!isPlayingCinematic && (
+        <>
+          <StoryDialogueOverlay />
+          <DecisionModal />
+          <ThinkBeforeYouCodeModal />
+        </>
+      )}
 
       {/* In-Game Interactive Username Coding Terminal */}
       <CodeUsernameTerminal
@@ -128,7 +191,15 @@ export default function PlayPage() {
       />
 
       {/* Monaco Code Studio Dock */}
-      <CodeStudio />
+      {!isPlayingCinematic && <CodeStudio />}
     </div>
+  );
+}
+
+export default function PlayPage() {
+  return (
+    <Suspense fallback={<div className="w-full h-screen bg-slate-950 flex items-center justify-center text-cyan-400">Loading Game World...</div>}>
+      <PlayPageContent />
+    </Suspense>
   );
 }

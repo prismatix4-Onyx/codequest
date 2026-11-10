@@ -20,19 +20,10 @@ import {
 import { useStore } from '@/store/useStore';
 import { GamifiedLoginCanvas } from './GamifiedLoginCanvas';
 import { soundFx } from '@/utils/soundEffects';
+import { getApiEndpoint } from '@/utils/api';
 
 interface AuthPortalProps {
   onSuccess: () => void;
-}
-
-// Resilient API URL Builder: handles whether NEXT_PUBLIC_API_URL includes /api/v1 or not, and strips trailing slashes
-function getApiEndpoint(path: string): string {
-  const raw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-  const base = raw.replace(/\/+$/, '');
-  const hasApiV1 = base.endsWith('/api/v1');
-  const root = hasApiV1 ? base : `${base}/api/v1`;
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${root}${cleanPath}`;
 }
 
 export function AuthPortal({ onSuccess }: AuthPortalProps) {

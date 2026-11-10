@@ -27,6 +27,7 @@ export function CodeStudio() {
   const isExecuting = useStore((s) => s.isExecuting);
   const executionResult = useStore((s) => s.executionResult);
   const runCodeSubmission = useStore((s) => s.runCodeSubmission);
+  const runCodeOnly = useStore((s) => s.runCodeOnly);
   const isEditorOpen = useStore((s) => s.isEditorOpen);
   const closeMission = useStore((s) => s.closeMission);
   const useHint = useStore((s) => s.useHint);
@@ -84,10 +85,29 @@ export function CodeStudio() {
             {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </Button>
 
+          {/* 1. Run Code (Local Execution Sandbox Test) */}
+          <Button
+            variant="secondary"
+            size="sm"
+            isLoading={isExecuting}
+            disabled={isExecuting}
+            onClick={async () => {
+              soundFx.playClick();
+              await runCodeOnly();
+            }}
+            className="flex items-center gap-1.5 px-3 border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200"
+            title="Run Code in Python Sandbox (Tests Execution Without Submitting)"
+          >
+            <Play className="w-3.5 h-3.5" />
+            <span>Run Code</span>
+          </Button>
+
+          {/* 2. Submit Solution (Trusted Evaluation against all test cases) */}
           <Button
             variant="glow-cyan"
             size="sm"
             isLoading={isExecuting}
+            disabled={isExecuting}
             onClick={async () => {
               soundFx.playClick();
               await runCodeSubmission();
@@ -98,10 +118,11 @@ export function CodeStudio() {
                 soundFx.playError();
               }
             }}
-            className="flex items-center gap-1.5 px-4"
+            className="flex items-center gap-1.5 px-4 font-bold"
+            title="Submit Solution to Trusted Evaluator to Stabilize Reactor"
           >
-            <Play className="w-4 h-4 fill-current" />
-            <span>Run Program</span>
+            <Zap className="w-4 h-4 fill-current text-cyan-300" />
+            <span>Submit Protocol</span>
           </Button>
         </div>
       </div>

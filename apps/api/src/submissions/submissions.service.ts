@@ -96,10 +96,16 @@ export class SubmissionsService {
       result.feedback = EvaluatorModule.generateFeedback(result);
     }
 
-    // If passed, award XP & mark mission complete in story progress
+    // If passed, award XP idempotently & mark mission complete in story progress
     if (result.allPassed) {
       try {
-        await this.authService.addXp(userId, 100);
+        const currentProgress = this.storiesService.getProgress(userId, mission.storyId);
+        const isFirstClear = !currentProgress.completedMissionIds.includes(missionId);
+
+        if (isFirstClear) {
+          await this.authService.addXp(userId, 150);
+        }
+
         this.storiesService.saveProgress(userId, mission.storyId, {
           completedMissionIds: [missionId],
         });
@@ -113,21 +119,48 @@ export class SubmissionsService {
 
   private evaluateDeterministically(code: string, mission: MissionChallenge): ExecutionResult {
     const norm = code.replace(/\r\n/g, '\n');
-    const hasStation = norm.includes('STATION: AETHELGARD');
-    const hasReactor = norm.includes('REACTOR_LEVEL: 100');
-    const hasProtocol = norm.includes('PROTOCOL_STATUS: ONLINE');
+    const hasInit = norm.includes('REACTOR INITIALIZED');
+    const hasPower = norm.includes('POWER: STABLE');
+
+    // Syntax validation heuristic for offline sandbox fallback
+    let syntaxError: string | null = null;
+    const openParens = (norm.match(/\(/g) || []).length;
+    const closeParens = (norm.match(/\)/g) || []).length;
+    if (openParens !== closeParens) {
+      syntaxError = 'SyntaxError: unexpected EOF while parsing (unmatched parentheses)';
+    }
+
+    if (syntaxError) {
+      return {
+        status: 'syntax_error',
+        stdout: '',
+        stderr: syntaxError,
+        executionTimeMs: 15,
+        allPassed: false,
+        testResults: mission.testCases.map((tc) => ({
+          testId: tc.id,
+          description: tc.description,
+          passed: false,
+          actualOutput: syntaxError!,
+          expectedOutput: tc.isHidden ? '[HIDDEN TEST]' : tc.expectedOutput,
+          isHidden: tc.isHidden,
+        })),
+        error: syntaxError,
+        feedback: 'SyntaxError detected. Ensure every print(...) call has matching quotes and parentheses.',
+      };
+    }
 
     const testResults = mission.testCases.map((tc) => {
       let passed = false;
-      if (tc.id === 'tc-lp-01-1') passed = hasStation;
-      else if (tc.id === 'tc-lp-01-2') passed = hasReactor;
-      else passed = hasStation && hasReactor && hasProtocol;
+      if (tc.id === 'tc-lp-01-1') passed = hasInit;
+      else if (tc.id === 'tc-lp-01-2') passed = hasPower;
+      else passed = hasInit && hasPower;
 
       return {
         testId: tc.id,
         description: tc.description,
         passed,
-        actualOutput: passed ? tc.expectedOutput : 'Failed check',
+        actualOutput: passed ? tc.expectedOutput : 'Missing telemetry stream',
         expectedOutput: tc.isHidden ? '[HIDDEN TEST]' : tc.expectedOutput,
         isHidden: tc.isHidden,
       };
@@ -138,15 +171,15 @@ export class SubmissionsService {
     return {
       status: allPassed ? 'passed' : 'failed',
       stdout: allPassed
-        ? 'STATION: AETHELGARD\nREACTOR_LEVEL: 100\nPROTOCOL_STATUS: ONLINE'
-        : 'Diagnostic output incomplete.',
+        ? 'REACTOR INITIALIZED\nPOWER: STABLE'
+        : (hasInit ? 'REACTOR INITIALIZED\n' : '') + (hasPower ? 'POWER: STABLE\n' : 'Diagnostic signal rejected.'),
       stderr: '',
       executionTimeMs: 42,
       allPassed,
       testResults,
       feedback: allPassed
-        ? 'Mission telemetry verified! All test cases passed.'
-        : 'Telemetry missing required diagnostic strings.',
+        ? 'Mission telemetry verified! Reactor core synchronized.'
+        : 'Telemetry missing required diagnostic strings. Ensure both REACTOR INITIALIZED and POWER: STABLE are printed.',
     };
   }
 }

@@ -14,6 +14,9 @@ import missionsData from '../../../../content/python/last-protocol/missions.json
 import { StoryEngine } from '@codequest/story-engine';
 import { AudioEngine } from '@codequest/audio-engine';
 import { EnvironmentStateManager, WebGLDetector } from '@codequest/game-engine';
+import { getApiEndpoint } from '@/utils/api';
+import type { AriaAnimationState } from '@/components/characters/AriaCharacter';
+import type { ReactorState } from '@/components/props/ReactorCore';
 
 interface AppState {
   // Theme & Settings
@@ -25,6 +28,7 @@ interface AppState {
   // User Auth
   user: UserProfile;
   isAuthenticated: boolean;
+  isGuest: boolean;
   setUser: (user: UserProfile) => void;
   logout: () => void;
   addXp: (amount: number) => void;
@@ -39,10 +43,14 @@ interface AppState {
   isDialoguePlaying: boolean;
   activeSubtitleText: string | null;
 
-  // 3D Engine State
+  // 3D Engine & Visual State
   environmentManager: EnvironmentStateManager;
   environmentState: ReturnType<EnvironmentStateManager['getState']>;
   isWebGlSupported: boolean;
+  reactorState: ReactorState;
+  ariaAnimation: AriaAnimationState;
+  setReactorState: (state: ReactorState) => void;
+  setAriaAnimation: (anim: AriaAnimationState) => void;
 
   // Audio Engine
   audioEngine: AudioEngine;
@@ -54,6 +62,7 @@ interface AppState {
   isExecuting: boolean;
   executionResult: ExecutionResult | null;
   hintsUsedCount: number;
+  completedMissionIds: string[];
 
   // Story & Gameplay Actions
   startCampaign: () => void;
@@ -63,6 +72,7 @@ interface AppState {
   openMission: (missionId: string) => void;
   closeMission: () => void;
   setCode: (code: string) => void;
+  runCodeOnly: () => Promise<void>;
   runCodeSubmission: () => Promise<void>;
   resetCode: () => void;
   useHint: () => void;
@@ -122,7 +132,13 @@ export const useStore = create<AppState>((set, get) => {
       updatedAt: new Date().toISOString(),
     },
     isAuthenticated: false,
-    setUser: (user) => set({ user, isAuthenticated: true }),
+    isGuest: false,
+    setUser: (user) =>
+      set({
+        user,
+        isAuthenticated: true,
+        isGuest: !!(user as any).isGuest || user.id.startsWith('guest-'),
+      }),
     logout: () => {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('codequest_token');
@@ -130,6 +146,7 @@ export const useStore = create<AppState>((set, get) => {
       }
       set({
         isAuthenticated: false,
+        isGuest: false,
         user: {
           id: 'guest-explorer',
           email: 'cadet@codequest.dev',
@@ -164,6 +181,18 @@ export const useStore = create<AppState>((set, get) => {
     environmentManager: initialEnvManager,
     environmentState: initialEnvManager.getState(),
     isWebGlSupported: typeof window !== 'undefined' ? WebGLDetector.isSupported() : true,
+    reactorState:
+      typeof window !== 'undefined' && localStorage.getItem('cq_reactor_state') === 'operational'
+        ? 'operational'
+        : 'critical',
+    ariaAnimation: 'concerned',
+    setReactorState: (reactorState) => {
+      set({ reactorState });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cq_reactor_state', reactorState);
+      }
+    },
+    setAriaAnimation: (ariaAnimation) => set({ ariaAnimation }),
 
     audioEngine: initialAudioEngine,
 
@@ -173,6 +202,10 @@ export const useStore = create<AppState>((set, get) => {
     isExecuting: false,
     executionResult: null,
     hintsUsedCount: 0,
+    completedMissionIds:
+      typeof window !== 'undefined'
+        ? JSON.parse(localStorage.getItem('cq_completed_missions') || '[]')
+        : [],
 
     startCampaign: () => {
       const engine = get().storyEngine;
@@ -290,14 +323,89 @@ export const useStore = create<AppState>((set, get) => {
       set((state) => ({ hintsUsedCount: state.hintsUsedCount + 1 }));
     },
 
-    runCodeSubmission: async () => {
-      const { code, activeMission, hintsUsedCount, environmentManager, storyEngine, addXp } = get();
+    // 1. Run Program (Local/Worker execution only — tests execution without formal submission or completing mission)
+    runCodeOnly: async () => {
+      const { code, activeMission } = get();
       if (!activeMission) return;
 
-      set({ isExecuting: true });
+      set({ isExecuting: true, ariaAnimation: 'thinking' });
 
       try {
-        const response = await fetch('http://localhost:4000/api/v1/submissions', {
+        const endpoint = getApiEndpoint('/submissions');
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: get().user.id,
+            missionId: activeMission.id,
+            code,
+            hintsUsed: 0,
+            runOnly: true,
+          }),
+        });
+
+        let result: ExecutionResult;
+        if (response.ok) {
+          result = (await response.json()) as ExecutionResult;
+        } else {
+          // Local sandbox simulation for Run Code
+          const norm = code.replace(/\r\n/g, '\n');
+          let output = '';
+          const lines = norm.split('\n');
+          for (const line of lines) {
+            const m = line.match(/^\s*print\s*\(\s*["'](.*)["']\s*\)\s*$/);
+            if (m) {
+              output += m[1] + '\n';
+            }
+          }
+
+          result = {
+            status: output ? 'passed' : 'runtime_error',
+            stdout: output || 'Program executed with no standard output.',
+            stderr: '',
+            executionTimeMs: 38,
+            allPassed: false, // Run Code does not mark challenge passed!
+            testResults: [],
+            feedback: 'Program executed. Review terminal output before submitting protocol.',
+          };
+        }
+
+        set({ executionResult: result, isExecuting: false, ariaAnimation: 'listening' });
+      } catch (err) {
+        set({
+          isExecuting: false,
+          ariaAnimation: 'concerned',
+          executionResult: {
+            status: 'system_error',
+            stdout: '',
+            stderr: (err as Error).message,
+            executionTimeMs: 0,
+            allPassed: false,
+            testResults: [],
+            feedback: 'Execution worker timeout or service offline.',
+          },
+        });
+      }
+    },
+
+    // 2. Submit Solution (Trusted deterministic evaluation against public and hidden test cases)
+    runCodeSubmission: async () => {
+      const {
+        code,
+        activeMission,
+        hintsUsedCount,
+        environmentManager,
+        storyEngine,
+        addXp,
+        completedMissionIds,
+      } = get();
+      if (!activeMission) return;
+
+      set({ isExecuting: true, ariaAnimation: 'thinking' });
+
+      try {
+        const endpoint = getApiEndpoint('/submissions');
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -312,81 +420,150 @@ export const useStore = create<AppState>((set, get) => {
         if (response.ok) {
           result = (await response.json()) as ExecutionResult;
         } else {
-          // Worker fallback evaluation
+          // Offline / standalone trusted evaluator fallback
           const norm = code.replace(/\r\n/g, '\n');
-          const p1 = norm.includes('STATION: AETHELGARD');
-          const p2 = norm.includes('REACTOR_LEVEL: 100');
-          const p3 = norm.includes('PROTOCOL_STATUS: ONLINE');
-          const allPassed = p1 && p2 && p3;
+          const hasInit = norm.includes('REACTOR INITIALIZED');
+          const hasPower = norm.includes('POWER: STABLE');
 
-          result = {
-            status: allPassed ? 'passed' : 'failed',
-            stdout: allPassed
-              ? 'STATION: AETHELGARD\nREACTOR_LEVEL: 100\nPROTOCOL_STATUS: ONLINE'
-              : 'Output missing required telemetry diagnostic lines.',
-            stderr: '',
-            executionTimeMs: 45,
-            allPassed,
-            testResults: [
-              {
-                testId: '1',
-                description: 'Station Identifier Output',
-                passed: p1,
-                actualOutput: p1 ? 'STATION: AETHELGARD' : 'Missing',
-                expectedOutput: 'STATION: AETHELGARD',
-                isHidden: false,
-              },
-              {
-                testId: '2',
-                description: 'Reactor Capacity Output',
-                passed: p2,
-                actualOutput: p2 ? 'REACTOR_LEVEL: 100' : 'Missing',
-                expectedOutput: 'REACTOR_LEVEL: 100',
-                isHidden: false,
-              },
-              {
-                testId: '3',
-                description: 'Complete Telemetry Sequence',
-                passed: allPassed,
-                actualOutput: allPassed ? '[HIDDEN TEST]' : 'Failed',
-                expectedOutput: '[HIDDEN TEST]',
-                isHidden: true,
-              },
-            ],
-            feedback: allPassed
-              ? 'Mission telemetry verified! Reactor core synchronized.'
-              : 'Review standard output formatting and ensure all 3 print lines are present.',
-          };
+          // Syntax check heuristic
+          const openParens = (norm.match(/\(/g) || []).length;
+          const closeParens = (norm.match(/\)/g) || []).length;
+          const hasSyntaxError = openParens !== closeParens;
+
+          if (hasSyntaxError) {
+            result = {
+              status: 'syntax_error',
+              stdout: '',
+              stderr: 'SyntaxError: unexpected EOF while parsing (unmatched parentheses)',
+              executionTimeMs: 15,
+              allPassed: false,
+              testResults: activeMission.testCases.map((tc) => ({
+                testId: tc.id,
+                description: tc.description,
+                passed: false,
+                actualOutput: 'SyntaxError',
+                expectedOutput: tc.isHidden ? '[HIDDEN TEST]' : tc.expectedOutput,
+                isHidden: tc.isHidden,
+              })),
+              error: 'SyntaxError',
+              feedback: 'SyntaxError: Ensure every print(...) has matching quotes and parentheses.',
+            };
+          } else {
+            const testResults = activeMission.testCases.map((tc) => {
+              let passed = false;
+              if (tc.id === 'tc-lp-01-1') passed = hasInit;
+              else if (tc.id === 'tc-lp-01-2') passed = hasPower;
+              else passed = hasInit && hasPower;
+
+              return {
+                testId: tc.id,
+                description: tc.description,
+                passed,
+                actualOutput: passed ? tc.expectedOutput : 'Signal Rejected',
+                expectedOutput: tc.isHidden ? '[HIDDEN TEST]' : tc.expectedOutput,
+                isHidden: tc.isHidden,
+              };
+            });
+
+            const allPassed = testResults.every((t) => t.passed);
+            result = {
+              status: allPassed ? 'passed' : 'failed',
+              stdout: (hasInit ? 'REACTOR INITIALIZED\n' : '') + (hasPower ? 'POWER: STABLE\n' : ''),
+              stderr: '',
+              executionTimeMs: 44,
+              allPassed,
+              testResults,
+              feedback: allPassed
+                ? 'Signal accepted. Main reactor stabilization sequence initiated!'
+                : 'Initialization sequence rejected. Output did not match target telemetry.',
+            };
+          }
         }
 
         set({ executionResult: result, isExecuting: false });
 
         if (result.allPassed) {
-          // 1. Trigger 3D Environment Transformation
-          environmentManager.restorePower();
+          // State Machine Phase 1: RECOVERING (cyan transition, energy stabilizing)
+          set({
+            reactorState: 'recovering',
+            ariaAnimation: 'happy',
+            currentDialogue: {
+              id: 'dlg-aria-recovering',
+              characterId: 'aria',
+              characterName: 'ARIA',
+              text: "Wait... that worked! The initialization signal is valid. We're getting power back!",
+              emotion: 'happy',
+              audioId: '',
+              audioUrl: '',
+              durationMs: 4000,
+            },
+          });
 
-          // 2. Award XP
-          addXp(150);
-
-          // 3. Complete mission in story engine & progress to victory scene
+          // State Machine Phase 2: OPERATIONAL after stabilization completes (2.5 seconds)
           setTimeout(() => {
+            environmentManager.restorePower();
+            const isFirstClear = !completedMissionIds.includes(activeMission.id);
+            const nextCompleted = isFirstClear
+              ? [...completedMissionIds, activeMission.id]
+              : completedMissionIds;
+
+            if (isFirstClear) {
+              addXp(150);
+            }
+
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('cq_completed_missions', JSON.stringify(nextCompleted));
+              localStorage.setItem('cq_reactor_state', 'operational');
+            }
+
+            set({
+              reactorState: 'operational',
+              ariaAnimation: 'mission_success',
+              completedMissionIds: nextCompleted,
+            });
+
+            // Advance story engine to victory scene
             storyEngine.markMissionComplete(activeMission.id, 'scene-lp-6-success');
             const nextScene = storyEngine.getCurrentScene();
             set({
               isEditorOpen: false,
               currentScene: nextScene,
-              currentDialogue: nextScene?.dialogue?.[0] || null,
+              currentDialogue: nextScene?.dialogue?.[0] || {
+                id: 'dlg-lp-6-1',
+                characterId: 'aria',
+                characterName: 'ARIA',
+                text: "Look at that! You didn't just follow instructions. You figured out how to restore the system.",
+                emotion: 'mission_success',
+                audioId: '',
+                audioUrl: '',
+                durationMs: 6000,
+              },
               dialogueIndex: 0,
-              totalDialogue: nextScene?.dialogue?.length || 0,
+              totalDialogue: nextScene?.dialogue?.length || 1,
             });
-            if (nextScene?.dialogue?.[0]) {
-              get().replayDialogueVoice();
-            }
-          }, 1800);
+          }, 2500);
+        } else {
+          // Tests Failed: Reactor stays CRITICAL, ARIA concerned with feedback
+          set({
+            reactorState: 'critical',
+            ariaAnimation: 'concerned',
+            currentDialogue: {
+              id: 'dlg-aria-failed',
+              characterId: 'aria',
+              characterName: 'ARIA',
+              text: "Hmm. The reactor didn't receive the correct signal. Let's inspect what the terminal returned.",
+              emotion: 'mission_failed',
+              audioId: '',
+              audioUrl: '',
+              durationMs: 4500,
+            },
+          });
         }
       } catch (err) {
         set({
           isExecuting: false,
+          reactorState: 'critical',
+          ariaAnimation: 'concerned',
           executionResult: {
             status: 'system_error',
             stdout: '',
@@ -394,7 +571,7 @@ export const useStore = create<AppState>((set, get) => {
             executionTimeMs: 0,
             allPassed: false,
             testResults: [],
-            feedback: 'Error contacting execution service.',
+            feedback: 'Error contacting execution service. Please retry.',
           },
         });
       }
