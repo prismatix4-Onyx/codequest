@@ -1,8 +1,16 @@
 {
   "name": "@codequest/ui",
   "version": "1.0.0",
-  "main": "src/index.tsx",
+  "main": "dist/index.js",
   "types": "src/index.tsx",
+  "exports": {
+    ".": {
+      "types": "./src/index.tsx",
+      "import": "./src/index.tsx",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc"
   },
