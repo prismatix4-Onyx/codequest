@@ -7,6 +7,7 @@ import { CinematicPlayer } from '@/components/story/CinematicPlayer';
 import { StoryDialogueOverlay } from '@/components/story/StoryDialogueOverlay';
 import { DecisionModal } from '@/components/story/DecisionModal';
 import { ThinkBeforeYouCodeModal } from '@/components/story/ThinkBeforeYouCodeModal';
+import { MissionSuccessModal } from '@/components/story/MissionSuccessModal';
 import { CodeStudio } from '@/components/editor/CodeStudio';
 import { CodeUsernameTerminal } from '@/components/story/CodeUsernameTerminal';
 import { useStore } from '@/store/useStore';
@@ -70,8 +71,19 @@ function PlayPageContent() {
       localStorage.setItem('cq_cinematic_completed', 'true');
     }
     setIsPlayingCinematic(false);
-    // Open the first mission challenge
-    openMission(currentScene?.missionId || 'mission-lp-01');
+
+    // Transition smoothly to ARIA's diagnostic handshake briefing
+    const engine = useStore.getState().storyEngine;
+    engine.goToScene('scene-lp-2-briefing');
+    const nextScene = engine.getCurrentScene();
+    useStore.setState({
+      currentScene: nextScene,
+      currentDialogue: nextScene?.dialogue?.[0] || null,
+      dialogueIndex: 0,
+      totalDialogue: nextScene?.dialogue?.length || 0,
+      ariaAnimation: 'talking',
+    });
+    useStore.getState().replayDialogueVoice();
     soundFx.playSuccess();
   };
 
@@ -181,6 +193,7 @@ function PlayPageContent() {
           <StoryDialogueOverlay />
           <DecisionModal />
           <ThinkBeforeYouCodeModal />
+          <MissionSuccessModal />
         </>
       )}
 

@@ -125,6 +125,11 @@ export class AudioEngine {
   }
 
   public pauseVoice(): void {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.speaking) {
+      window.speechSynthesis.pause();
+      this.setState('paused');
+      return;
+    }
     if (this.voiceAudioElement && !this.voiceAudioElement.paused) {
       this.voiceAudioElement.pause();
       this.setState('paused');
@@ -132,6 +137,11 @@ export class AudioEngine {
   }
 
   public resumeVoice(): void {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+      this.setState('playing');
+      return;
+    }
     if (this.voiceAudioElement && this.voiceAudioElement.paused) {
       this.voiceAudioElement.play().then(() => this.setState('playing'));
     }
@@ -139,6 +149,9 @@ export class AudioEngine {
 
   public stopVoice(): void {
     this.clearSubtitleTracking();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     if (this.voiceAudioElement) {
       this.voiceAudioElement.pause();
       this.voiceAudioElement.currentTime = 0;
@@ -184,6 +197,56 @@ export class AudioEngine {
 
   private executeVoiceFallback(fallbackText?: string): void {
     this.clearSubtitleTracking();
+
+    // Check if browser Web Speech API is available and enabled
+    if (
+      typeof window !== 'undefined' &&
+      'speechSynthesis' in window &&
+      !this.isMuted &&
+      this.voiceVolume > 0 &&
+      fallbackText
+    ) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(fallbackText);
+        utterance.volume = this.voiceVolume;
+        utterance.rate = 1.05;
+        utterance.pitch = 1.15; // AI companion pitch
+
+        // Select an English voice if available
+        const voices = window.speechSynthesis.getVoices();
+        const ariaVoice = voices.find(
+          (v) =>
+            v.lang.startsWith('en') &&
+            (v.name.includes('Female') ||
+              v.name.includes('Zira') ||
+              v.name.includes('Samantha') ||
+              v.name.includes('Google US English') ||
+              v.name.includes('Natural'))
+        );
+        if (ariaVoice) {
+          utterance.voice = ariaVoice;
+        }
+
+        utterance.onstart = () => {
+          this.setState('playing');
+        };
+        utterance.onend = () => {
+          this.setState('idle');
+          this.listeners.forEach((l) => l.onEnded?.());
+        };
+        utterance.onerror = () => {
+          this.setState('idle');
+          this.listeners.forEach((l) => l.onEnded?.());
+        };
+
+        window.speechSynthesis.speak(utterance);
+        return;
+      } catch (err) {
+        // Fall back to timed text display
+      }
+    }
+
     this.setState('error');
     this.listeners.forEach((l) =>
       l.onError?.('Audio stream offline. Falling back to visual text display.')
